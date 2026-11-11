@@ -1,6 +1,6 @@
 # AGIBOT X2 Multimodal Pipeline
 
-X2 Ultra t2d5의 실제 RGB 카메라·상태 조회, 직접 조종, SDK 프리셋, 의자 기립·착석과 VLM 명령 변환을 제공한다. [Unitree G1 파이프라인](https://github.com/8l4nnk/unitree-g1-pipeline)과 같은 루트 실행 스크립트 구조와 조작 화면을 사용한다.
+브라우저에서 X2 Ultra t2d5의 카메라와 상태를 확인하고, 일어서기·앉기·손 흔들기·이동을 조작하는 프로젝트다. 사진과 글로 쓴 지시를 AI에 보내 동작을 요청할 수도 있다. [Unitree G1 파이프라인](https://github.com/8l4nnk/unitree-g1-pipeline)과 같은 실행 스크립트 구조와 조작 화면을 사용한다.
 
 ## 사용설명서
 
@@ -11,19 +11,25 @@ X2 Ultra t2d5의 실제 RGB 카메라·상태 조회, 직접 조종, SDK 프리�
 
 ## 실행 구성
 
-노트북, DGX Spark, Mac 중 로봇을 운용할 기기 한 대를 선택한다. 선택한 기기에 이 저장소를 설치하고 X2를 LAN으로 직접 연결한다. 대시보드 서버와 브라우저는 모두 해당 기기에서 실행한다.
+로봇을 사용할 PC에 프로젝트를 설치하고 X2를 LAN 케이블로 직접 연결한다. 대시보드 실행과 브라우저 조작은 모두 이 PC에서 진행한다.
 
-| 사용할 기기 | 대시보드 실행 | 화면 열기 | 로봇 연결 |
-|---|---|---|---|
-| 노트북 | 노트북에서 `./start_field.sh` | 노트북의 브라우저 | 노트북 → X2 |
-| DGX Spark | DGX Spark에서 `./start_field.sh` | DGX Spark의 브라우저 | DGX Spark → X2 |
-| Mac | Mac에서 `./start_field.sh` | Mac의 브라우저 | Mac → X2 |
+Windows, Linux(DGX Spark 포함), macOS에서 **같은 스크립트 `./start_field.sh`**를 사용한다. 명령을 입력할 프로그램은 다음과 같다.
 
-설치·환경 설정·실행 명령은 선택한 기기 한 대에서 진행한다. 각 기기의 `.venv`, `.env`, SSH 인증과 실행 기록도 그 기기에 저장한다. VLM 요청은 해당 기기의 대시보드에서 설정된 OpenRouter API로 직접 보낸다.
+| 운영체제 | 명령을 입력할 프로그램 |
+|---|---|
+| Windows | Git Bash |
+| Linux · DGX Spark | 터미널 |
+| macOS | 터미널 |
 
-## 빠른 시작 — 선택한 기기에서 실행
+프로젝트의 Python 실행 환경(`.venv`), 연결 설정(`.env`), 로봇 접속 정보와 기록은 실행한 PC에 저장한다. AI 요청도 이 PC에서 OpenRouter로 보낸다.
 
-Python 3.10 이상과 Bash, Git이 필요하다. 기존 Python을 사용하고 프로젝트 `.venv`에만 패키지를 설치한다. Python 본체·CUDA·ROS를 개발 PC에 새로 설치하지 않는다. `.venv`는 재사용하며 의존성 목록이 바뀌거나 패키지가 빠진 경우에만 pip를 실행한다.
+## 빠른 시작
+
+처음 사용하는 경우 [대시보드 사용설명서](docs/USER_GUIDE_KO.md)의 전원 켜기와 LAN 연결부터 진행한다. 아래 명령은 로봇을 사용할 PC에서 실행한다.
+
+Python 3.10 이상과 Git, Bash가 필요하다. Windows에서는 Git Bash를 연다. 기존 Python으로 프로젝트 전용 `.venv`를 만들고, 이후에는 같은 환경과 패키지를 재사용한다. 명령은 한 줄씩 복사해 붙여 넣고 Enter를 누른다.
+
+처음 설치할 때 프로젝트를 내려받는다. 이미 `agibot-x2` 폴더가 있으면 그 폴더에서 터미널을 열어 연결 설정을 확인한다.
 
 ```bash
 git clone https://github.com/mps0927/agibot-x2.git
@@ -32,7 +38,7 @@ cp .env.example .env
 ./setup.sh
 ```
 
-`.env`에 로봇 SSH 비밀번호 또는 키 경로와 OpenRouter 키를 입력한다. 이미 환경변수로 설정한 값이 우선한다. `.env`는 Git에서 제외된다.
+`.env`는 연결 설정 파일이다. 텍스트 편집기로 열고 아래 비밀번호와 키 안내를 실제 값으로 바꿔 저장한다. Windows에서는 Git Bash에서 `notepad .env`로 열 수 있다. 수동 조종만 사용할 때 OpenRouter 키는 비워 둔다. 항목별 설명은 [설치와 실행](docs/USER_GUIDE_KO.md#dashboard)을 참고한다.
 
 ```dotenv
 X2_SSH_HOST=10.0.1.41
@@ -46,14 +52,21 @@ OPENROUTER_API_KEY=발급받은_키
 
 ```bash
 ssh agi@10.0.1.41
-# 연결 확인 후 exit
+```
+
+로봇에 접속되면 `exit`를 입력해 PC 터미널로 돌아온다. 이어서 PC의 `agibot-x2` 폴더에서 실행한다.
+
+```bash
+exit
 ./start_field.sh
 ./status.sh
 ```
 
-대시보드를 실행한 **같은 기기의 브라우저**에서 **http://127.0.0.1:8766**을 연다. `start_field.sh`는 백그라운드로 실행되어 터미널을 닫아도 유지된다. 같은 옵션으로 재실행하면 기존 서버를 사용한다. 다른 옵션으로 바꾸려면 `./stop.sh` 후 다시 실행한다.
+대시보드를 실행한 **같은 PC의 브라우저**에서 [대시보드 열기](http://127.0.0.1:8766)를 누른다. 주소창에 `http://127.0.0.1:8766`을 입력해도 된다. `start_field.sh`로 시작하면 터미널을 닫아도 실행이 유지된다. 다음 날에도 프로젝트 폴더에서 같은 명령을 사용한다.
 
-화면 상단의 **착석 자세 고정 → 일어서기 → 제어 활성화** 순서로 준비하고, 직접 조종 패널 상단의 프리셋 또는 WASD·Q/E를 사용한다. SDK 요청 수락과 실제 동작 종료는 구분하며 프리셋은 한 번에 한 개씩 요청한다.
+화면 상단의 **착석 자세 고정 → 일어서기 → 제어 활성화** 순서로 준비한다. 직접 조종 영역에서 프리셋 버튼이나 WASD·Q/E를 사용한다. 손 흔들기 같은 프리셋은 한 번에 한 개씩 요청하고, 실제 동작이 끝난 뒤 **프리셋 종료 현장 확인**을 누른다.
+
+종료할 때는 [의자에 앉히고 전원 끄기](docs/USER_GUIDE_KO.md#power-off) 순서로 로봇을 앉히고 힘을 해제한 뒤 `./stop.sh`를 실행한다. 프로그램 오류는 [자주 발생하는 문제](docs/USER_GUIDE_KO.md#troubleshooting)를 참고한다.
 
 ## 실행 방식
 
@@ -66,7 +79,7 @@ ssh agi@10.0.1.41
 | 로봇 없이 검사 | `./preflight.sh --offline --test` | 없음 | 서버 시작 없음 |
 | 상태·종료 | `./status.sh` / `./stop.sh` | 로컬 서버 관리 | 추가 포트 없음 |
 
-최초 환경 준비는 `run.sh`에서도 자동 수행한다. 별도 Python을 선택하려면 최초 실행 전에 `PYTHON_BIN=/path/to/python3 ./setup.sh`를 사용한다. 가상환경은 각 기기에서 새로 만들며 Windows의 `.venv`를 DGX나 Mac에 복사하지 않는다.
+최초 환경 준비는 `run.sh`에서도 자동 수행한다. 특정 Python을 사용하려면 최초 실행 전에 `PYTHON_BIN=/path/to/python3 ./setup.sh`를 사용한다. `.venv`는 실행할 PC에서 `./setup.sh`로 준비한다. 이미 환경변수로 지정한 설정값은 `.env`보다 우선하며 `.env`는 Git에서 제외된다.
 
 다른 `.env` 경로는 `./start_field.sh --env-file /path/to/.env`로 지정한다. OpenRouter 키가 없어도 실제 영상·상태·수동 제어는 사용할 수 있다. 오프라인 모드에서는 업로드 이미지로 VLM을 확인할 수 있다. 이전 캡처 자료가 있다면 `./run.sh --offline --replay /path/to/robot_snapshot`으로 불러올 수 있다. 개인 사진·기기 로그는 저장소에 포함하지 않는다.
 
@@ -87,7 +100,7 @@ agibot-x2/
 └── docs/
 ```
 
-선택한 운용 기기에서 대시보드가 실행되며, 그 기기의 AsyncSSH가 X2 개발 보드에 직접 접속한다. 로봇에 이미 설치된 ROS 2 Humble과 AIMDK를 사용해 전용 워커를 실행한다. 워커 파일은 `/home/agi/agibot_dashboard`에 동기화하며 SDK·펌웨어를 다시 설치하지 않는다. 개발 PC에는 SDK ARM64 바이너리나 ROS 설치가 필요하지 않다. 실제 통신은 SSH 포트 22를 이용하고 웹 대시보드는 8766 하나를 사용한다.
+대시보드가 실행되는 PC에서 AsyncSSH로 X2 개발 보드에 직접 접속한다. 로봇에 이미 설치된 ROS 2 Humble과 AIMDK를 사용해 전용 워커를 실행한다. 워커 파일은 `/home/agi/agibot_dashboard`에 동기화한다. PC에는 대시보드 패키지를 설치하고, 로봇의 SDK·ROS·펌웨어는 기존 설치본을 사용한다. 로봇 통신은 SSH 포트 22, 웹 대시보드는 8766을 사용한다.
 
 운동 보드 `10.0.1.40`을 직접 조종하거나 MC 앱을 중지하는 실행기는 포함하지 않는다. 기본 개발 보드 `10.0.1.41`의 공식 ROS SDK 서비스를 호출한다. 설치 SDK 관측 버전은 `aimdk v1.0.0-ga424add`이며 연결 시 해당 기기의 상수·서비스 준비 상태를 다시 조회한다.
 

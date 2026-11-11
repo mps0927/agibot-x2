@@ -1,5 +1,5 @@
 flowchart LR
-    subgraph HOST[One operating device: laptop OR DGX Spark OR Mac]
+    subgraph HOST[Operating PC: Windows / Linux / macOS]
         B[Browser on this device] <-->|localhost:8766| D[Dashboard on this device]
         D --> P[Validated named actions]
         P --> D
