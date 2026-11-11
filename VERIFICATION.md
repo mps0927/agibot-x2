@@ -7,7 +7,8 @@
 | Python 본체 중복 설치 | 없음 | 기존 Python 3.13.3으로 `.venv` 생성, `system_python_installed=false` |
 | 환경 재사용 | 통과 | 두 번째 `setup.sh`에서 `environment=reused`, pip 재실행 없음 |
 | Bash 진입점 | 통과 | Git Bash `bash -n`, `preflight.sh --offline --test` 실행 |
-| SDK·VLM·실행 제한·기록·프로세스 | 56개 테스트 통과 | `python -m unittest discover -s x2_motion` |
+| SDK·VLM·실행 제한·기록·프로세스 | 57개 테스트 통과 | `python -m unittest discover -s x2_motion` |
+| 모드별 지지 확인 | 통과 | 조종 활성화 확인과 분리, 착석 상태에서 영토크 요청 전달·미확인 요청 거부·확인 초기화 브라우저/서버 검사 |
 | OpenRouter 모델 선택 | 통과 | 이미지·텍스트 채팅 필터, 계정 목록·공개 목록, 캐시·갱신·오류 처리, 선택 모델·이미지 전송과 파라미터 호환 검사 |
 | 보행 전환 연속 명령 | 통과 | 기존 이동만 상태 200에서 유지, 새 이동·만료·보호 상태·연결 끊김은 거부 |
 | 프리셋 요청 자동 해제 | 통과 | SDK 응답 후 다음 프리셋 요청, 요청 ID 일치, 실패 응답 표시와 구형 수동 확인 명령 제거 검사 |

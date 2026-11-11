@@ -109,9 +109,22 @@ $('custom-stop').onclick=()=>notify('이동 정지는 Space입니다. 이미 시
 $('custom-select').onchange=()=>{const spec=registeredMotions?.actions?.[1]?.find(x=>x.name===$('custom-select').value);$('custom-description').textContent=spec?`${spec.name} · 등록 시간 ${spec.time}초 · 로봇에 저장된 전체 동작을 재생합니다.`:'로봇 등록 목록을 기다립니다.';update();};
 document.querySelectorAll('[data-setting]').forEach(input=>input.oninput=()=>{profileDirty=true;});
 $('apply-settings').onclick=()=>{const profile={};for(const x of document.querySelectorAll('[data-setting]')){if(!x.checkValidity()){x.reportValidity();return;}profile[x.dataset.setting]=Number(x.value);}if(send({action:'configure',profile})){profileDirty=false;notify('이동 설정 적용을 요청했습니다. 표시되는 현재 값을 확인하세요.');}};
-function updateMode(){const m=manualModes[$('mode-select').value];if(!m)return;$('mode-condition').textContent=`요청 FSM ${m.id} · ${m.condition}${!config.control_permissions?.mode_switch?' · 대시보드에서 일반 모드 전환 잠금':state.fsm===null?' · 운동 RPC 미수신':m.from&&!m.from.includes(state.fsm)?' · 현재 모드에서는 전환 불가':''}`;$('apply-mode').disabled=!config.control_permissions?.mode_switch||!state.connected||typeof state.fsm!=='string'||!$('physical').checked||!$('mode-confirm').checked||state.controller==='other'||!!state.gesture||!!(m.from&&!m.from.includes(state.fsm));}
+function updateMode(){
+  const m=manualModes[$('mode-select').value];
+  if(!m)return;
+  const reason=!config.control_permissions?.mode_switch?'대시보드에서 모드 전환이 잠겨 있습니다.':
+    !state.connected?'로봇 연결을 기다리고 있습니다.':
+    typeof state.fsm!=='string'?'현재 로봇 모드 수신을 기다리고 있습니다.':
+    state.controller==='other'?'다른 창에서 제어 중입니다.':
+    state.gesture||state.arm_pending?'이전 모션 요청의 SDK 응답을 기다리고 있습니다.':
+    m.from&&!m.from.includes(state.fsm)?'현재 모드에서는 이 전환을 요청할 수 없습니다.':
+    !$('mode-confirm').checked?'아래에서 선택 모드의 자세·지지 조건을 확인해 주세요.':'';
+  $('mode-condition').textContent=`${m.label} · ${m.condition}${reason?' · '+reason:' · 전환 요청 가능'}`;
+  $('apply-mode').disabled=!!reason;
+  $('apply-mode').title=reason||`${m.label} 모드 전환 요청`;
+}
 $('mode-select').onchange=()=>{$('mode-confirm').checked=false;updateMode();};$('mode-confirm').onchange=updateMode;
-$('apply-mode').onclick=()=>{if(!$('mode-confirm').checked)return;send({action:'set_mode',mode:$('mode-select').value,confirmed:$('physical').checked,condition_confirmed:true});$('mode-confirm').checked=false;updateMode();};
+$('apply-mode').onclick=()=>{const confirmed=$('mode-confirm').checked;if(!confirmed||$('apply-mode').disabled)return;send({action:'set_mode',mode:$('mode-select').value,confirmed,condition_confirmed:confirmed});$('mode-confirm').checked=false;updateMode();};
 document.addEventListener('keydown',e=>{
   if(e.code==='Escape'){instructionEpoch++;endHold(true);return;}
   if(['TEXTAREA','INPUT','SELECT'].includes(e.target.tagName))return;

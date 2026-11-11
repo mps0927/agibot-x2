@@ -65,4 +65,24 @@ class Routes(unittest.IsolatedAsyncioTestCase):
         response=await self.client.post('/api/postures/stand_up_from_seat',json={'confirmed':True},headers={'Origin':str(self.client.make_url('/')).rstrip('/')})
         self.assertEqual(response.status,400);self.assertEqual(sent,[]);self.d.owner=None
 
+    async def test_supported_mode_switch_is_independent_of_locomotion_arm(self):
+        self.d.state.update(fsm='SIT_JOINT_DEFAULT',fsm_status=100,ready=False,armed=False)
+        self.d.state_at=time.monotonic();sent=[]
+        async def send(msg):sent.append(msg)
+        self.d.send=send
+        origin=str(self.client.make_url('/')).rstrip('/')
+        ws=await self.client.ws_connect('/ws',headers={'Origin':origin});await ws.receive_json()
+        await ws.send_json(dict(action='set_mode',mode='zero_torque',confirmed=False,condition_confirmed=True))
+        for _ in range(20):
+            reply=await asyncio.wait_for(ws.receive_json(),2)
+            if reply['type']=='error':break
+        self.assertEqual(reply['type'],'error');self.assertEqual(sent,[])
+        await ws.send_json(dict(action='set_mode',mode='zero_torque',confirmed=True,condition_confirmed=True))
+        for _ in range(50):
+            if sent:break
+            await asyncio.sleep(.01)
+        self.assertEqual(sent,[dict(action='set_mode',mode='zero_torque',confirmed=True,condition_confirmed=True)])
+        self.assertFalse(self.d.state['armed'])
+        await ws.close()
+
 if __name__=='__main__':unittest.main()
