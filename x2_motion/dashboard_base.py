@@ -204,7 +204,8 @@ class Dashboard:
     async def broadcast(self):
         for ws in list(self.clients):
             with contextlib.suppress(Exception):
-                await ws.send_json(dict(type="state", **{k: v for k, v in self.state.items() if k not in ("type","controller","execution_source","events","pipeline_status")},
+                await ws.send_json(dict(type="state", **{k: v for k, v in self.state.items() if k not in ("type","controller","execution_source","events","pipeline_status","received_age_ms")},
+                    received_age_ms=int((time.monotonic()-self.state_at)*1000) if self.state_at else None,
                     controller="you" if self.owner is ws else "other" if self.owner else "none",
                     execution_source="plan" if self.plan_task and not self.plan_task.done() else "manual" if self.owner else "none",
                     events=list(self.events), pipeline_status=self.pipeline_status))

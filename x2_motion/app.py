@@ -293,7 +293,7 @@ class X2Dashboard(Dashboard):
         return web.json_response(dict(self.state,read_only=self.args.read_only,control_permissions=self.scopes,
             preset_block_reason=reason,seat_hold_supported=self.scopes['seat_hold'],seat_hold_block_reason='착석 고정 요청에는 착석·지지 확인과 최신 상태가 필요합니다.',
             restrictions=[dict(layer='내장 프리셋 API',reason='SetMcPresetMotion의 문서상 조건은 안정 서기입니다. PDF의 착석 상체 제어는 별도 텔레옵 경로이며, 앉아서 팔을 움직일 수 없다는 뜻은 아닙니다.'),
-                dict(layer='설치 SDK 버전',reason='설치 SDK에서 정확한 매핑이 확인된 프리셋만 표시합니다. 완료 상태 조회 바인딩이 없어 종료는 현장 확인이 필요합니다.'),
+                dict(layer='설치 SDK 버전',reason='설치 SDK에서 정확한 매핑이 확인된 프리셋을 표시합니다. SDK 응답을 받으면 요청 잠금을 자동으로 해제합니다.'),
                 dict(layer='대시보드 설정',reason='현재 권한: '+', '.join(k for k,v in self.scopes.items() if v)+'. 직접 관절 실행은 미리보기만 제공합니다.'),
                 dict(layer='착석 고정',reason='↑ + × 후 실제 조회한 SIT_JOINT_DEFAULT로 SetMcAction을 요청합니다. 코드상 연결됐으며 기기의 수락 여부와 실제 모드는 별도로 확인합니다.')],
             received_age_ms=int((time.monotonic()-self.state_at)*1000) if self.state_at else None,

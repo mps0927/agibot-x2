@@ -65,6 +65,12 @@ class DirectRobotConnection(unittest.IsolatedAsyncioTestCase):
                                 if dashboard.state.get('connected') and dashboard.latest_jpeg:break
                                 await asyncio.sleep(.02)
                             self.assertTrue(dashboard.state.get('connected'));self.assertEqual(dashboard.latest_jpeg,jpeg)
+                            ws=await client.ws_connect('/ws',headers={'Origin':str(client.make_url('/')).rstrip('/')})
+                            live_state=await ws.receive_json()
+                            self.assertTrue(live_state['connected'])
+                            self.assertGreaterEqual(live_state['received_age_ms'],0)
+                            self.assertLess(live_state['received_age_ms'],1500)
+                            await ws.close()
                             config=await (await client.get('/api/config')).json()
                             self.assertEqual(config['mode'],'ssh-direct');self.assertEqual(config['robot'],'127.0.0.1')
                             response=await client.post('/api/capture',json={},headers={'Origin':str(client.make_url('/')).rstrip('/')})
