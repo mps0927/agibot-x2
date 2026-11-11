@@ -828,4 +828,3 @@ def make_app(dashboard):
     app.router.add_get("/api/frames/{id}.jpg", dashboard.frame)
     app.router.add_post("/api/infer", dashboard.infer)
     return app
-

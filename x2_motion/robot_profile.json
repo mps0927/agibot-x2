@@ -4,7 +4,7 @@
   "model": "X2 Ultra",
   "hardware": "t2d5",
   "sdk": "aimdk v1.0.0-ga424add",
-  "urdf_source": "C:\\Users\\mps24\\Downloads\\AI_lab\\agibot\\agibot_x2_urdf\\X2_URDF-v1.3.0\\x2_ultra.urdf",
+  "urdf_source": "https://github.com/AgibotTech/agibot_x2_urdf/blob/575cc6b988f976c23550e0db85aa1e5475d3652d/X2_URDF-v1.3.0/x2_ultra.urdf",
   "joints": {
     "left_hip_pitch_joint": {
       "lower": -2.704,
