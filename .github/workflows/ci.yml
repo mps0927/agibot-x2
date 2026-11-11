@@ -1,0 +1,25 @@
+name: Portable dashboard
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  verify:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python: ['3.10', '3.12']
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: Check shell syntax
+        run: bash -n setup.sh run.sh preflight.sh start_field.sh status.sh stop.sh scripts/python.sh
+      - name: Prepare project environment
+        run: ./setup.sh
+      - name: Reuse environment without reinstalling Python
+        run: ./setup.sh
+      - name: Verify offline contracts and process lifecycle
+        run: ./preflight.sh --offline --test

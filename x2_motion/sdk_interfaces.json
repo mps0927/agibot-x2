@@ -1,0 +1,502 @@
+{
+  "sdk_version": "aimdk v1.0.0-ga424add",
+  "services": [
+    {
+      "name": "ExecuteActionResource",
+      "endpoint": "/aimdk_5Fmsgs/srv/ExecuteActionResource",
+      "source": "src/aimdk_msgs/interface/robot/app_proxy/srv/ExecuteActionResource.srv",
+      "sha256": "ca2a7830a7e7ebaab6e64d42d58158cde0e14c73376d0e8208fbd2cee5cefdf9",
+      "request": [],
+      "response": [
+        "-----------------------------------------------------------------------------------------------------------",
+        "CommonRequest header",
+        "string resource_key",
+        "string resource_version",
+        "SlaveDevice[] slaves",
+        "string meta",
+        "---",
+        "CommonResponse header"
+      ]
+    },
+    {
+      "name": "GetRobotResources",
+      "endpoint": "/aimdk_5Fmsgs/srv/GetRobotResources",
+      "source": "src/aimdk_msgs/interface/robot/app_proxy/srv/GetRobotResources.srv",
+      "sha256": "b7c53ea0a8d1420fd88253dcd755257985bdc0f9b5f44a58c86f4da6a3743b7d",
+      "request": [],
+      "response": [
+        "-----------------------------------------------------------------------------------------------------------",
+        "CommonRequest header",
+        "---",
+        "CommonResponse header",
+        "RobotResource[] robot_resources"
+      ]
+    },
+    {
+      "name": "PlayEmoji",
+      "endpoint": "/aimdk_5Fmsgs/srv/PlayEmoji",
+      "source": "src/aimdk_msgs/interface/robot/face_ui/srv/PlayEmoji.srv",
+      "sha256": "abe7098c7d5296d233a51d209ee704432000fdc21e833937d1466149660a6d5e",
+      "request": [],
+      "response": [
+        "-----------------------------------------------------------------------------------------------------------",
+        "CommonRequest header",
+        "uint8 emotion_id",
+        "uint8 EMOTION_UNKNOWN = 0",
+        "uint8 EMOTION_IDLE_BLINK = 1",
+        "uint8 EMOTION_IDLE_CALM_1 = 10",
+        "uint8 EMOTION_IDLE_CALM_2 = 11",
+        "uint8 EMOTION_IDLE_GAME = 20",
+        "uint8 EMOTION_IDLE_CUTE_1 = 30",
+        "uint8 EMOTION_IDLE_CUTE_2 = 31",
+        "uint8 EMOTION_IDLE_CUTE_3 = 32",
+        "uint8 EMOTION_IDLE_CUTE_4 = 33",
+        "uint8 EMOTION_EYE_CLOSE = 40",
+        "uint8 EMOTION_EYE_OPEN = 50",
+        "uint8 EMOTION_EYE_BORING_1 = 60",
+        "uint8 EMOTION_EYE_ABNORMAL = 70",
+        "uint8 EMOTION_EYE_SLEEPY = 80",
+        "uint8 EMOTION_EYE_HAPPY = 90",
+        "uint8 EMOTION_EYE_EXTREMEHAPPY_1 = 100",
+        "uint8 EMOTION_EYE_EXTREMEHAPPY_2 = 101",
+        "uint8 EMOTION_EYE_SAD = 110",
+        "uint8 EMOTION_EYE_SYMPATHY = 120",
+        "uint8 EMOTION_EYE_CONFUSE = 130",
+        "uint8 EMOTION_EYE_SHOCK = 140",
+        "uint8 EMOTION_EYE_ACTCUTE = 150",
+        "uint8 EMOTION_EYE_SERIOUS = 160",
+        "uint8 EMOTION_EYE_THINKING = 170",
+        "uint8 EMOTION_EYE_ANGRY = 180",
+        "uint8 EMOTION_EYE_EXTREMEANGRY = 190",
+        "uint8 EMOTION_EYE_ADORE = 200",
+        "uint8 EMOTION_EYE_EXTREMEADORE = 210",
+        "uint8 EMOTION_EYE_CHARGE = 220",
+        "uint8 mode",
+        "uint8 EMOTION_MODE_ONCE = 1",
+        "uint8 EMOTION_MODE_LOOP = 2",
+        "int32 priority",
+        "---",
+        "CommonResponse header",
+        "bool success",
+        "string message"
+      ]
+    },
+    {
+      "name": "PlayVideo",
+      "endpoint": "/aimdk_5Fmsgs/srv/PlayVideo",
+      "source": "src/aimdk_msgs/interface/robot/face_ui/srv/PlayVideo.srv",
+      "sha256": "ebbb70a75546ff61bf4f679ed9d2232e15044be2832521a043deff9160c59198",
+      "request": [
+        "CommonRequest header"
+      ],
+      "response": [
+        "-------------------------------------------------",
+        "string video_path",
+        "uint8 mode",
+        "uint8 EMOTION_MODE_ONCE = 1",
+        "uint8 EMOTION_MODE_LOOP = 2",
+        "int32 priority",
+        "---",
+        "CommonResponse header",
+        "bool success",
+        "string message"
+      ]
+    },
+    {
+      "name": "PlayVideoGroup",
+      "endpoint": "/aimdk_5Fmsgs/srv/PlayVideoGroup",
+      "source": "src/aimdk_msgs/interface/robot/face_ui/srv/PlayVideoGroup.srv",
+      "sha256": "423e466c76ef9184b668109da1658e3b344a1c50307fad48abd5be3fc04751d3",
+      "request": [
+        "CommonRequest header"
+      ],
+      "response": [
+        "-------------------------------------------------",
+        "string[] video_path_list",
+        "uint8 mode",
+        "uint8 EMOTION_MODE_ONCE = 1",
+        "uint8 EMOTION_MODE_LOOP = 2",
+        "int32 priority",
+        "---",
+        "CommonResponse header",
+        "bool success",
+        "string message"
+      ]
+    },
+    {
+      "name": "AbandonAudioFocus",
+      "endpoint": "/aimdk_5Fmsgs/srv/AbandonAudioFocus",
+      "source": "src/aimdk_msgs/interface/robot/hal/audio/srv/AbandonAudioFocus.srv",
+      "sha256": "eadd979efb9f5c77648ebea4d80495e6116f4fbdb894d228b33dae7e5a9df730",
+      "request": [],
+      "response": [
+        "-------------------------------------------------",
+        "CommonRequest request",
+        "FocusRequester focus_requester",
+        "---",
+        "CommonResponse reponse",
+        "FocusResponse focus_response"
+      ]
+    },
+    {
+      "name": "GetMute",
+      "endpoint": "/aimdk_5Fmsgs/srv/GetMute",
+      "source": "src/aimdk_msgs/interface/robot/hal/audio/srv/GetMute.srv",
+      "sha256": "3ccf0386fd5f6b87857f8bebb4cd60f69448120e84bab4adfb0e97bbe69845ac",
+      "request": [],
+      "response": [
+        "-------------------------------------------------",
+        "CommonRequest request",
+        "---",
+        "CommonResponse reponse",
+        "bool is_mute"
+      ]
+    },
+    {
+      "name": "GetVolume",
+      "endpoint": "/aimdk_5Fmsgs/srv/GetVolume",
+      "source": "src/aimdk_msgs/interface/robot/hal/audio/srv/GetVolume.srv",
+      "sha256": "23a936cb483e9344b22c167022e10f9f9cee5d667acab4d8d84087ccdf3fda92",
+      "request": [],
+      "response": [
+        "-------------------------------------------------",
+        "CommonRequest request",
+        "---",
+        "CommonResponse reponse",
+        "uint32 audio_volume"
+      ]
+    },
+    {
+      "name": "PlayAudioFile",
+      "endpoint": "/aimdk_5Fmsgs/srv/PlayAudioFile",
+      "source": "src/aimdk_msgs/interface/robot/hal/audio/srv/PlayAudioFile.srv",
+      "sha256": "83b317cef013039da965797aa7cce3dda6386b36ada4c130ce409dcb55568fc9",
+      "request": [],
+      "response": [
+        "-------------------------------------------------",
+        "CommonRequest request",
+        "AudioFile file",
+        "builtin_interfaces/Time play_stamps",
+        "---",
+        "CommonResponse reponse"
+      ]
+    },
+    {
+      "name": "RequestAudioFocus",
+      "endpoint": "/aimdk_5Fmsgs/srv/RequestAudioFocus",
+      "source": "src/aimdk_msgs/interface/robot/hal/audio/srv/RequestAudioFocus.srv",
+      "sha256": "eadd979efb9f5c77648ebea4d80495e6116f4fbdb894d228b33dae7e5a9df730",
+      "request": [],
+      "response": [
+        "-------------------------------------------------",
+        "CommonRequest request",
+        "FocusRequester focus_requester",
+        "---",
+        "CommonResponse reponse",
+        "FocusResponse focus_response"
+      ]
+    },
+    {
+      "name": "SetMute",
+      "endpoint": "/aimdk_5Fmsgs/srv/SetMute",
+      "source": "src/aimdk_msgs/interface/robot/hal/audio/srv/SetMute.srv",
+      "sha256": "d2afe36b49616efff2109fe70213cb23cba558bb42790ac88c2c394b3f3a0f35",
+      "request": [],
+      "response": [
+        "-------------------------------------------------",
+        "CommonRequest request",
+        "bool is_mute",
+        "---",
+        "CommonResponse reponse",
+        "bool is_mute"
+      ]
+    },
+    {
+      "name": "SetVolume",
+      "endpoint": "/aimdk_5Fmsgs/srv/SetVolume",
+      "source": "src/aimdk_msgs/interface/robot/hal/audio/srv/SetVolume.srv",
+      "sha256": "9d7e534ec0eddacf5ecd53540bf72632e732ae0a53b306f305556b19f167dd19",
+      "request": [],
+      "response": [
+        "-------------------------------------------------",
+        "CommonRequest request",
+        "uint32 audio_volume",
+        "---",
+        "CommonResponse reponse",
+        "uint32 audio_volume"
+      ]
+    },
+    {
+      "name": "GetAllJointState",
+      "endpoint": "/aimdk_5Fmsgs/srv/GetAllJointState",
+      "source": "src/aimdk_msgs/interface/robot/hal/srv/GetAllJointState.srv",
+      "sha256": "12b55ac3185f2a0cff19b775f571cc640c29006b9d8b588cd4598609d48a6a3c",
+      "request": [
+        "CommonRequest request"
+      ],
+      "response": [
+        "CommonResponse reponse",
+        "JointState[] head_joints",
+        "JointState[] arm_joints",
+        "JointState[] waist_joints",
+        "JointState[] leg_joints"
+      ]
+    },
+    {
+      "name": "GetHandType",
+      "endpoint": "/aimdk_5Fmsgs/srv/GetHandType",
+      "source": "src/aimdk_msgs/interface/robot/hal/srv/GetHandType.srv",
+      "sha256": "4e13fb2918e794ea41d76aedff03a90446ef1056dd69e3e92c5036dcc8800c77",
+      "request": [
+        "CommonRequest request"
+      ],
+      "response": [
+        "CommonResponse reponse",
+        "HandType left_hands_type",
+        "HandType right_hands_type"
+      ]
+    },
+    {
+      "name": "SetPmuLed",
+      "endpoint": "/aimdk_5Fmsgs/srv/SetPmuLed",
+      "source": "src/aimdk_msgs/interface/robot/hal/srv/SetPmuLed.srv",
+      "sha256": "5d5591375c2fadd1f9c79a0e924847ec1ed947bea589fec25e201a9444b4f24b",
+      "request": [
+        "CommonRequest request",
+        "string trace_id",
+        "uint8 led_strip_mode",
+        "uint8 LED_STRIP_MODE_CONSTANT = 0",
+        "uint8 LED_STRIP_MODE_BREATH = 1",
+        "uint8 LED_STRIP_MODE_FLASH = 2",
+        "uint8 LED_STRIP_MODE_FLOW = 3",
+        "uint8 LED_STRIP_MODE_MAX = 4",
+        "uint8 r",
+        "uint8 g",
+        "uint8 b",
+        "int32 priority",
+        "bool reset_priority"
+      ],
+      "response": [
+        "ResponseHeader header",
+        "uint16 status_code"
+      ]
+    },
+    {
+      "name": "GetMicSourceRequest",
+      "endpoint": "/aimdk_5Fmsgs/srv/GetMicSourceRequest",
+      "source": "src/aimdk_msgs/interface/robot/interaction/srv/GetMicSourceRequest.srv",
+      "sha256": "02318b472491ce37b9761b411e827893be3faaf22e2d6c0dc0fd00a9911beaef",
+      "request": [
+        "CommonRequest header"
+      ],
+      "response": [
+        "CommonResponse header",
+        "uint32 mic_source"
+      ]
+    },
+    {
+      "name": "PlayTts",
+      "endpoint": "/aimdk_5Fmsgs/srv/PlayTts",
+      "source": "src/aimdk_msgs/interface/robot/interaction/srv/PlayTts.srv",
+      "sha256": "da8f4e42d786198194ea4f6dbde6fc9318ad4981d990595a45eec9a407a305ff",
+      "request": [
+        "CommonRequest header",
+        "PlayTtsRequest tts_req"
+      ],
+      "response": [
+        "------------------------------------------------- req",
+        "---",
+        "CommonResponse header",
+        "PlayTtsResponse tts_resp"
+      ]
+    },
+    {
+      "name": "SetAgentPropertiesRequest",
+      "endpoint": "/aimdk_5Fmsgs/srv/SetAgentPropertiesRequest",
+      "source": "src/aimdk_msgs/interface/robot/interaction/srv/SetAgentPropertiesRequest.srv",
+      "sha256": "1702f691743fe79737772cc51f2110a4703b7f0ff879ced217c41e7db84aa733",
+      "request": [
+        "CommonRequest header",
+        "AgentProperties contents"
+      ],
+      "response": [
+        "CommonResponse header"
+      ]
+    },
+    {
+      "name": "SetMicSourceRequest",
+      "endpoint": "/aimdk_5Fmsgs/srv/SetMicSourceRequest",
+      "source": "src/aimdk_msgs/interface/robot/interaction/srv/SetMicSourceRequest.srv",
+      "sha256": "42e6557e1eec7f16d080aba6a5a68cd6509d198368f5dafa79974bbdf09454a6",
+      "request": [
+        "CommonRequest header",
+        "uint32 mic_source"
+      ],
+      "response": [
+        "CommonResponse header"
+      ]
+    },
+    {
+      "name": "GetMcAction",
+      "endpoint": "/aimdk_5Fmsgs/srv/GetMcAction",
+      "source": "src/aimdk_msgs/interface/robot/mc/action/srv/GetMcAction.srv",
+      "sha256": "a3bd4cc6e0eb2dcdafdccf1aef0dae0162de4e64f6dc8687812aadf7e447d222",
+      "request": [
+        "CommonRequest request"
+      ],
+      "response": [
+        "ResponseHeader header",
+        "McActionInfo info"
+      ]
+    },
+    {
+      "name": "SetMcAction",
+      "endpoint": "/aimdk_5Fmsgs/srv/SetMcAction",
+      "source": "src/aimdk_msgs/interface/robot/mc/action/srv/SetMcAction.srv",
+      "sha256": "3deb19a6a18851065d527413191cc5dd6a0819f93bc23ffcceb34be21b7ba8aa",
+      "request": [
+        "RequestHeader header",
+        "string source",
+        "McActionCommand command"
+      ],
+      "response": [
+        "CommonResponse response"
+      ]
+    },
+    {
+      "name": "GetCurrentInputSource",
+      "endpoint": "/aimdk_5Fmsgs/srv/GetCurrentInputSource",
+      "source": "src/aimdk_msgs/interface/robot/mc/motion/srv/GetCurrentInputSource.srv",
+      "sha256": "ac902b323944bea03321e3e869e52dbae8b77398af38f5ddef335caa9daebfb6",
+      "request": [
+        "CommonRequest request"
+      ],
+      "response": [
+        "CommonTaskResponse response",
+        "McInputSource input_source"
+      ]
+    },
+    {
+      "name": "SetMcInputSource",
+      "endpoint": "/aimdk_5Fmsgs/srv/SetMcInputSource",
+      "source": "src/aimdk_msgs/interface/robot/mc/motion/srv/SetMcInputSource.srv",
+      "sha256": "f6b0744105da51b49dd14ce581bac6b490ee2837e027712a44e0489300f57e34",
+      "request": [
+        "CommonRequest request",
+        "McInputAction action",
+        "McInputSource input_source"
+      ],
+      "response": [
+        "CommonTaskResponse response"
+      ]
+    },
+    {
+      "name": "SetMcPresetMotion",
+      "endpoint": "/aimdk_5Fmsgs/srv/SetMcPresetMotion",
+      "source": "src/aimdk_msgs/interface/robot/mc/motion/srv/SetMcPresetMotion.srv",
+      "sha256": "29df5508145be62d1c094d6335bf98d547374a52d3e5f7786c857f75038ae585",
+      "request": [
+        "RequestHeader header",
+        "McControlArea area",
+        "McPresetMotion motion",
+        "bool interrupt",
+        "string ani_path",
+        "uint64 play_timestamp"
+      ],
+      "response": [
+        "CommonTaskResponse response"
+      ]
+    },
+    {
+      "name": "GetStoredMapByName",
+      "endpoint": "/aimdk_5Fmsgs/srv/GetStoredMapByName",
+      "source": "src/aimdk_msgs/interface/robot/mm/srv/GetStoredMapByName.srv",
+      "sha256": "67150a6aa5de3e96ec0112766b5edad7d5b23a88c5bb5ded0e6f39bc08229de0",
+      "request": [],
+      "response": [
+        "-----------------------------------------------------------------------------------------------------------",
+        "std_msgs/Header header",
+        "string map_name",
+        "---",
+        "uint64 code",
+        "std_msgs/Header header",
+        "nav_msgs/MapMetaData map_info",
+        "uint64 map_version",
+        "string map_path",
+        "int8[] data",
+        "NaviPoint[] navi_points",
+        "QRPoint[] qr_points",
+        "HRPoint[] hr_points",
+        "Path[] paths",
+        "Region[] regions",
+        "uint64 map_id"
+      ]
+    },
+    {
+      "name": "GetSystemState",
+      "endpoint": "/aimdk_5Fmsgs/srv/GetSystemState",
+      "source": "src/aimdk_msgs/interface/robot/sm/srv/GetSystemState.srv",
+      "sha256": "c476c287b7e0b7ba8dd235a35ac7993d054b54c552ba445dd7b932d84ad7162c",
+      "request": [],
+      "response": [
+        "-----------------------------------------------------------------------------------------------------------",
+        "CommonRequest header",
+        "---",
+        "CommonResponse header",
+        "string cur_state",
+        "SystemStatus curr_status"
+      ]
+    },
+    {
+      "name": "MigrateSystemState",
+      "endpoint": "/aimdk_5Fmsgs/srv/MigrateSystemState",
+      "source": "src/aimdk_msgs/interface/robot/sm/srv/MigrateSystemState.srv",
+      "sha256": "ce635a4137079d50e7cb63704e7a89011fdbdebcc007654ec8ac75d2a59a4e32",
+      "request": [],
+      "response": [
+        "-----------------------------------------------------------------------------------------------------------",
+        "CommonRequest header",
+        "string state",
+        "---",
+        "CommonResponse header"
+      ]
+    }
+  ],
+  "topics": [
+    "/agent/process_audio_output",
+    "/aima/hal/audio/capture",
+    "/aima/hal/audio/focus_response",
+    "/aima/hal/audio/play_state",
+    "/aima/hal/audio/playback",
+    "/aima/hal/imu/chest/state",
+    "/aima/hal/imu/torso/state",
+    "/aima/hal/joint/*/command",
+    "/aima/hal/joint/*/state",
+    "/aima/hal/joint/hand/command",
+    "/aima/hal/joint/hand/state",
+    "/aima/hal/pmu/state",
+    "/aima/hal/sensor/lidar_chest_front/imu",
+    "/aima/hal/sensor/lidar_chest_front/lidar_pointcloud",
+    "/aima/hal/sensor/rgb_head_rear/camera_info",
+    "/aima/hal/sensor/rgb_head_rear/rgb_image",
+    "/aima/hal/sensor/rgb_head_rear/rgb_image/compressed",
+    "/aima/hal/sensor/rgbd_head_front/depth_camera_info",
+    "/aima/hal/sensor/rgbd_head_front/depth_image",
+    "/aima/hal/sensor/rgbd_head_front/imu",
+    "/aima/hal/sensor/rgbd_head_front/rgb_camera_info",
+    "/aima/hal/sensor/rgbd_head_front/rgb_image",
+    "/aima/hal/sensor/rgbd_head_front/rgb_image/compressed",
+    "/aima/hal/sensor/stereo_head_front_left/camera_info",
+    "/aima/hal/sensor/stereo_head_front_left/rgb_image",
+    "/aima/hal/sensor/stereo_head_front_left/rgb_image/compressed",
+    "/aima/hal/sensor/stereo_head_front_right/camera_info",
+    "/aima/hal/sensor/stereo_head_front_right/rgb_image",
+    "/aima/hal/sensor/stereo_head_front_right/rgb_image/compressed",
+    "/aima/hal/sensor/touch_head",
+    "/aima/mc/locomotion/velocity",
+    "/face_ui_proxy/status",
+    "/integrated_command",
+    "/relocalization_pose",
+    "/slam/lidar_odom"
+  ]
+}

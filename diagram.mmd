@@ -1,0 +1,11 @@
+flowchart LR
+    O[Operator / G1-compatible dashboard] --> D[Local dashboard :8766]
+    D --> V[VLM / OpenRouter]
+    V --> P[Validated named actions]
+    P --> D
+    D --> S[SSH to X2 PC2]
+    S --> W[X2 worker / ROS 2 Humble]
+    W --> M[Installed AIMDK services]
+    M --> X[AGIBOT X2 Ultra]
+    X --> W
+    W --> D

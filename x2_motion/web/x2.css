@@ -1,0 +1,36 @@
+/* G1 shared style.css and execution.css remain byte-identical to the reference. */
+.fsm{max-width:130px}.fsm strong{font-size:13px;overflow-wrap:anywhere;line-height:1.4}
+.control .text-button{margin-top:8px;padding:4px 0;border:0;background:transparent;color:var(--blue);text-align:left;font-size:12px}
+.seat-box{padding:12px 0;border-bottom:1px solid var(--line);margin-bottom:16px}
+.seat-box>b{font-size:13px}.seat-box button{width:100%}.posture-guides{display:grid;gap:8px;margin-top:10px}
+.preset-completion{margin:10px 20px 0}.preset-completion button{width:100%;font-size:12px}
+.motion-block-reason{display:block;margin-top:5px;color:#8c4b25}
+.control pre{max-height:250px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;font:11px/1.6 var(--mono)}
+#sdk-service-list{max-height:240px;overflow:auto}.sdk-service-row{border-bottom:1px solid var(--line);padding:8px 0}
+.sdk-service-row b{display:block;overflow-wrap:anywhere}.sdk-service-row small{color:var(--muted)}
+#posture-dialog{max-width:560px;width:calc(100% - 40px);border:1px solid var(--line);border-radius:10px;padding:22px;color:var(--ink);line-height:1.8}
+#posture-dialog::backdrop{background:#0c1e2d73}#posture-dialog ol{padding-left:22px}#posture-dialog li{margin:10px 0}
+#close-posture-guide{float:right;width:auto}#posture-guide{padding-top:45px}#model-key{max-width:100%}
+.joint-row{grid-template-columns:1.25rem minmax(0,1fr) 4rem}.joint-row input[type=range]{grid-column:2/-1}
+.joint-actions{flex-wrap:wrap}.mode-label input{max-width:100%}.control-details[open] summary{margin-bottom:8px}
+@media(max-width:740px){.control .limits{gap:12px}.camera-toolbar .button{max-width:100%}}
+.preparation{margin-bottom:20px}.preparation>.panel-head{padding-bottom:12px}
+.preparation-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0;padding:0 22px 16px}
+.preparation-step{padding:4px 20px 0;border-right:1px solid var(--line);min-width:0}
+.preparation-step:first-child{padding-left:0}.preparation-step:last-child{padding-right:0;border:0}
+.preparation-step h3{font-size:14px;display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.step-number{display:inline-grid;place-items:center;width:23px;height:23px;border-radius:50%;background:var(--blue-light);color:var(--blue);font:700 12px var(--mono)}
+.preparation-step>button{width:100%;font-size:12px}.preparation-step>.subtle{margin:5px 0 10px}
+.preparation-step .arm-box{padding:0;border:0;background:none}.preparation-step .arm-box p{min-height:0}
+.preparation .text-button{border:0;background:transparent;color:var(--blue);padding:5px 0;font-size:12px;box-shadow:none}
+.preparation-footer{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap;padding:12px 22px;border-top:1px solid var(--line);background:#f0f4fa}
+.preparation-footer>button{font-size:12px}.preparation-advanced{flex:1;min-width:230px;font-size:12px}
+.preparation-advanced>summary{cursor:pointer;color:var(--blue);font-weight:600;padding:8px 0}
+.preparation-advanced button{font-size:12px}.preparation-advanced[open]{flex-basis:100%}
+.preparation-progress{margin:0 22px 12px}.preparation-progress:empty{display:none}
+.preset-heading,.manual-heading{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:14px 20px 0}
+.preset-heading h3,.manual-heading h3{font-size:13px}.manual-heading{padding-top:14px;border-top:1px solid var(--line)}
+.control .gesture-buttons{margin-top:10px}.control .dpad{margin-top:12px}
+@media(max-width:900px){.preparation-steps{padding:0 15px 15px}.preparation-step{padding:4px 12px 0}}
+@media(max-width:640px){.preparation-steps{grid-template-columns:1fr;gap:14px}.preparation-step,.preparation-step:first-child,.preparation-step:last-child{padding:0 0 14px;border:0;border-bottom:1px solid var(--line)}.preparation-footer{padding:12px 15px}.preparation-footer>button{flex:1}.preparation>.panel-head{align-items:start}.preparation>.panel-head .badge{max-width:135px;white-space:normal}}
+@media(max-width:740px){.control{order:1}.pipeline{order:2}.preparation-footer{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}.preparation-footer>button{white-space:nowrap}.preparation-advanced{grid-column:1/-1;min-width:0}}
