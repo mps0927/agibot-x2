@@ -141,6 +141,7 @@ class Pipeline:
         self.model = os.environ.get("VLM_MODEL", "qwen/qwen3-vl-30b-a3b-instruct")
         self.endpoint = os.environ.get("VLM_PIPELINE_URL", "")
         self.last_request=None
+        self.model_parameters={}
 
     def info(self):
         return dict(provider="HTTP pipeline" if self.endpoint else "OpenRouter",
@@ -190,6 +191,9 @@ class Pipeline:
                        response_format={"type": "json_object"}, messages=[
             {"role": "system", "content": runtime_system_prompt(robot_state,image_meta)},
             {"role": "user", "content": user_content}])
+        parameters=self.model_parameters.get(payload['model'])
+        if parameters is not None and 'response_format' not in parameters:
+            payload.pop('response_format',None)
         preview_content=[user_content[0]]
         if image is not None:preview_content.append(dict(type="image_url",image_url=dict(url="[JPEG data URL omitted: {} bytes]".format(len(jpeg)))))
         self.last_request=dict(provider="OpenRouter",model=payload["model"],messages=[payload["messages"][0],

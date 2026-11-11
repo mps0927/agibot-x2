@@ -25,6 +25,7 @@ from pipeline import load_openrouter_config
 from posture_actions import posture_guide,validate_posture_request,POSTURES
 from vlm_recording import save_json
 from configuration import ROOT,DEFAULT_PORT,load_config,remote_paths,ssh_options
+from model_catalog import OpenRouterModels
 
 HERE = Path(__file__).parent.resolve()
 
@@ -52,6 +53,7 @@ class X2Dashboard(Dashboard):
         env_file=getattr(args,'env_file',None)
         load_config(env_file)
         super().__init__(args)
+        self.model_catalog=OpenRouterModels()
         self.scopes=permissions(getattr(args,'allow_control',False),getattr(args,'allow_presets',False),getattr(args,'allow_seat_hold',False),getattr(args,'allow_posture_actions',False))
         args.read_only=not any(self.scopes.values())
         self.camera_fps=30
@@ -306,6 +308,13 @@ class X2Dashboard(Dashboard):
         self.pipeline.key=key.strip()
         return web.json_response(dict(configured=True,persisted=False))
 
+    async def models(self,request):
+        if self.pipeline.endpoint:
+            return web.json_response(dict(enabled=False,models=[],selected=self.pipeline.model,provider='HTTP pipeline'))
+        data=await self.model_catalog.list(self.session,self.pipeline.key,request.query.get('refresh')=='1')
+        self.pipeline.model_parameters={model['id']:model['supported_parameters'] for model in data['models']}
+        return web.json_response(dict(data,enabled=True,selected=self.pipeline.model,provider='OpenRouter'))
+
 
 def create_app(args):
     dashboard=X2Dashboard(args)
@@ -314,6 +323,7 @@ def create_app(args):
     application.router.add_get('/api/status',dashboard.status)
     application.router.add_get('/api/action-map',dashboard.action_map)
     application.router.add_get('/api/sdk-map',dashboard.sdk_map)
+    application.router.add_get('/api/models',dashboard.models)
     application.router.add_post('/api/settings/model',dashboard.model_settings)
     application.router.add_post('/api/seat-hold',dashboard.seat_hold)
     application.router.add_get('/api/postures/{name}',dashboard.posture)

@@ -13,7 +13,7 @@ from pathlib import Path
 import hashlib
 
 from capabilities import DEFAULT_PROFILE, DIRECTIONS, MODES, PRESETS, validate_profile, validate_velocity, velocity, prepare_preset_request
-from control_policy import permissions, command_allowed, MC_REJECTIONS,seat_hold_check,SEAT_MODE
+from control_policy import permissions, command_allowed, MC_REJECTIONS,seat_hold_check,SEAT_MODE,active_locomotion_allowed
 from posture_actions import POSTURES,validate_posture_request,prepare_posture_request
 from sdk_catalog import READ_QUERIES
 
@@ -221,10 +221,15 @@ def main():
         if was_moving:publish_velocity(desired)
         if disarm:state['armed']=False
         event('disarmed' if disarm else 'stop_ack',publication='ZERO_VELOCITY' if was_moving else 'NO_MOTION_SENT',native_preset_may_continue=bool(state['gesture']))
-    def require_ready():
+    def continuing_walk():
+        now=time.monotonic()
+        return active_locomotion_allowed(state['fsm'],state.get('fsm_status'),now-mode_at,
+            state['armed'],any(desired),now-hold_at,now-hold_start)
+    def require_ready(continuation=False):
         if not enabled:raise ValueError('읽기 전용: 실행 허용으로 시작하지 않았습니다.')
         if time.monotonic()-mode_at>2:raise ValueError('최신 모드 응답이 없습니다.')
-        if state['fsm'] not in ('STAND_DEFAULT','LOCOMOTION_DEFAULT') or state.get('fsm_status')!=100:raise ValueError('현재 '+str(state['fsm'])+' · 안정 서기와 모드 실행 상태를 확인하세요.')
+        stable=state['fsm'] in ('STAND_DEFAULT','LOCOMOTION_DEFAULT') and state.get('fsm_status')==100
+        if not stable and not (continuation and continuing_walk()):raise ValueError('현재 '+str(state['fsm'])+' · 안정 서기와 모드 실행 상태를 확인하세요.')
         if state['gesture'] or command_busy or state['posture_pending'] or state['seat_hold_pending']:raise ValueError('이전 요청의 SDK 응답 또는 자세 전환을 기다리세요.')
     def mutate(name,request,callback,context=None):
         nonlocal command_busy
@@ -322,7 +327,8 @@ def main():
                 mode_target=spec['id']
             state['mode_changes_sent']+=1
             mutate('SetMcAction',req,mode_response);return
-        require_ready()
+        if action=='hold' and must_release:return
+        require_ready(continuation=action=='hold')
         if action=='arm':
             if msg.get('confirmed') is not True or msg.get('expected_fsm')!=state['fsm']:raise ValueError('현재 자세와 현장 확인을 다시 확인하세요.')
             if registered or not scopes['movement']:state['armed']=True;state['error']='';event('armed',scope='presets' if not scopes['movement'] else 'full');return
@@ -330,7 +336,6 @@ def main():
             mutate('SetMcInputSource',req,arm_response);return
         if not state['armed']:raise ValueError('제어를 먼저 활성화하세요.')
         if action=='hold':
-            if must_release:return
             vector=validate_velocity(msg['velocity']) if msg.get('velocity') is not None else velocity(msg['direction'],state['profile'])
             if not any(desired):
                 hold_limit=msg.get('burst_seconds',state['profile']['burst_seconds'])
@@ -383,7 +388,7 @@ def main():
                 state['error']='자세 전환 완료를 30초 안에 확인하지 못했습니다. 실제 로봇 자세를 확인하세요. 자동 재전송하지 않습니다.'
                 event('posture_timeout',name=pending['name'],error=state['error'])
             state['ready']=enabled and now-mode_at<2 and state['fsm'] in ('STAND_DEFAULT','LOCOMOTION_DEFAULT') and state.get('fsm_status')==100
-            if any(desired) and (not state['armed'] or not state['ready'] or now-hold_at>.30):release(True)
+            if any(desired) and not continuing_walk():release(True)
             if any(desired) and now-hold_start>=hold_limit:
                 release(False);must_release=True;state['must_release']=True
             if any(desired) and now>=next_velocity:publish_velocity(desired);next_velocity=now+.02

@@ -32,13 +32,14 @@ function startHold(direction) {
 }
 function stop() { instructionEpoch++;endHold();send({action:'stop'}); }
 function update() {
+  if(typeof updateModelPickerBusy==='function')updateModelPickerBusy();
   if(typeof updateRobotOverview==='function')updateRobotOverview(state);
   const connected=state.connected && socket?.readyState===WebSocket.OPEN;
   $('connection').textContent=config.mode==='replay'?'저장 사진 · 실물 미연결':config.read_only?(connected?'● X2 연결 · 읽기 전용':'X2 연결 확인 중 · 읽기 전용'):connected?(state.fsm===null?'SSH 연결 · 운동 RPC 응답 대기':'● AGIBOT X2 연결됨'):'AGIBOT X2 연결 확인 중';
   $('connection').className='badge '+(connected?'ok':'bad');
   $('fsm').textContent=(state.recorded_state?'기록 · ':'')+(modeLabels[state.fsm]||state.fsm||'—');$('fsm').title=state.fsm||'모드 응답 대기';
   const ours=state.armed && state.controller==='you';
-  $('arm').disabled=!connected || !state.ready || (!$('physical').checked&&!ours) || state.controller==='other' || (!ours&&!!state.gesture);
+  $('arm').disabled=!connected || (!state.ready&&!ours) || (!$('physical').checked&&!ours) || state.controller==='other' || (!ours&&!!state.gesture);
   $('arm').textContent=ours?'제어 해제':'제어 활성화';
   $('control-status').textContent=state.error || (config.read_only?'읽기 전용으로 실행 중입니다.':!connected?'X2 연결을 기다리는 중입니다.':state.controller==='other'?'다른 창에서 제어 중입니다.':!state.ready?`현재 ${state.fsm??'조회 중'} · 내장 프리셋 실행은 안정 서기 응답을 기다립니다.`:state.gesture?`${gestures[state.gesture]||state.gesture} · SDK 응답을 기다립니다.`:ours?'활성화됨 · 허용된 프리셋을 선택하세요.':'현장 조건을 확인한 뒤 프리셋을 선택하세요.');
   document.querySelectorAll('.dir').forEach(x=>x.disabled=!config.control_permissions?.movement||!ours||!!state.gesture||state.execution_source==='plan');
@@ -236,7 +237,7 @@ async function loadConfig(){
       $('camera').src='/camera/stream/head_color';
       if(value.mode==='replay'){$('view-label').textContent='RECORDED · 실물 미연결';$('capture').textContent='저장 프레임 선택';}
     }
-    $('model').value=value.pipeline.model;$('model').disabled=value.pipeline.provider!=='OpenRouter';
+    if(typeof configureModelPicker==='function')configureModelPicker(value.pipeline);else{$('model').value=value.pipeline.model;$('model').disabled=value.pipeline.provider!=='OpenRouter';}
     $('pipeline-status').textContent=value.pipeline.configured?`${value.pipeline.provider} 준비됨`:'키 설정 필요';
     $('pipeline-status').className='badge '+(value.pipeline.configured?'ok':'bad');update();
   }catch(e){notify(e.message);}

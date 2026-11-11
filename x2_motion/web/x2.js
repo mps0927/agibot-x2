@@ -70,7 +70,7 @@ document.getElementById('seat-hold').onclick=async()=>{
 };
 document.getElementById('save-model-key').onclick=async()=>{
   const input=document.getElementById('model-key');
-  try{await api('/api/settings/model',{key:input.value});input.value='';await loadConfig();notify('모델 키를 현재 프로세스에 적용했습니다. 파일에는 저장하지 않습니다.');}
+  try{await api('/api/settings/model',{key:input.value});input.value='';await loadConfig();if(typeof refreshOpenRouterModels==='function')await refreshOpenRouterModels(true);notify('모델 키를 현재 프로세스에 적용했습니다. 파일에는 저장하지 않습니다.');}
   catch(e){notify(e.message);}
 };
 refreshRobotFacts();

@@ -2,6 +2,15 @@
 import math
 SEAT_MODE = 'SIT_JOINT_DEFAULT'
 STABLE_MODES = ('STAND_DEFAULT', 'LOCOMOTION_DEFAULT')
+
+def active_locomotion_allowed(mode,status,mode_age,armed,has_velocity,hold_age,elapsed):
+    """Continue an existing velocity stream across the normal STAND -> WALK transition."""
+    if not armed or not has_velocity or mode_age is None or mode_age>2 or hold_age>.30:
+        return False
+    if mode in STABLE_MODES and status==100:
+        return True
+    return mode=='LOCOMOTION_DEFAULT' and status==200 and 0<=elapsed<2.0
+
 MC_REJECTIONS = {
     2:'요청 형식 또는 입력 소스가 올바르지 않음', 3:'기기 설정에 등록되지 않은 동작',
     4:'현재 자세에서 허용되지 않는 동작', 5:'복구 동작 진행 중', 6:'제조사 안전 보호가 전환을 거부함',
