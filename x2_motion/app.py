@@ -154,7 +154,8 @@ class X2Dashboard(Dashboard):
             raise ValueError('이 대시보드에서 해당 제어 권한이 잠겨 있습니다. 실행 설정을 확인하세요.')
         if msg.get('action')=='gesture' and msg.get('name') not in self.state.get('arm_actions',{}):
             raise ValueError('설치 SDK에서 확인된 프리셋만 요청할 수 있습니다.')
-        outgoing=dict(msg,request_id=uuid.uuid4().hex)
+        outgoing=dict(msg)
+        outgoing.setdefault('request_id',uuid.uuid4().hex)
         await super().send(outgoing)
         if getattr(self,'active_run_manifest',None):self.append_capture_event(self.active_run_manifest,'worker_command_sent',command=outgoing)
 

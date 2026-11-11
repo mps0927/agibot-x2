@@ -7,6 +7,7 @@ from app import create_app
 from capabilities import preset_mapping,prepare_preset_request,planner_catalog
 from control_policy import permissions,validate_plan_execution
 from pipeline import validate_result
+from x2_worker import finish_native_request
 
 class MappingContract(unittest.TestCase):
     def test_binding_and_sdk_payload_are_canonical(self):
@@ -48,7 +49,7 @@ class VLMDispatch(unittest.IsolatedAsyncioTestCase):
         self.application=create_app(args);self.d=self.application['dashboard']
         self.client=TestClient(TestServer(self.application));await self.client.start_server()
         self.origin=str(self.client.make_url('/')).rstrip('/')
-        self.commands=[];self.sdk=[];self.provider_requests=[]
+        self.commands=[];self.sdk=[];self.provider_requests=[];self.sdk_reply_state=1
         self.reply=dict(scene='사람이 있음',plan_status='ready',explanation='오른손 인사',decision_reason='테스트',actions=[dict(type='gesture',name='wave_right')])
         async def provider(request):
             self.provider_requests.append(await request.json());return web.json_response(self.reply)
@@ -64,8 +65,11 @@ class VLMDispatch(unittest.IsolatedAsyncioTestCase):
                 elif msg['action']=='gesture':
                     req=prepare_preset_request(Obj(motion=Obj(value=0),area=Obj(value=0),interrupt=True),msg['name'],outer.d.state['arm_actions'])
                     outer.sdk.append(dict(motion=req.motion.value,area=req.area.value,interrupt=req.interrupt))
-                    outer.d.state.update(gesture=msg['name'],arm_pending=False)
-                elif msg['action']=='acknowledge_motion_complete':outer.d.state.update(gesture=None,armed=False)
+                    outer.d.state.update(gesture=msg['name'],arm_pending=True,native_result=None)
+                    def reply():
+                        finish_native_request(outer.d.state,msg,0,outer.sdk_reply_state,'SetMcPresetMotion',lambda *args,**kwargs:None)
+                        outer.d.state_at=time.monotonic()
+                    asyncio.get_running_loop().call_later(.08,reply)
                 outer.d.state_at=time.monotonic()
             async def drain(self):pass
         self.d.process=Obj(returncode=None,stdin=Input())
@@ -84,7 +88,7 @@ class VLMDispatch(unittest.IsolatedAsyncioTestCase):
             if v['type']=='error':return v
         self.fail('Expected an error')
 
-    async def test_model_plan_dispatches_once_waits_for_operator_and_rejects_replay(self):
+    async def test_model_plan_dispatches_once_releases_on_sdk_reply_and_rejects_replay(self):
         response,plan=await self.infer();self.assertEqual(response.status,200,plan)
         self.assertTrue(plan['executable']);self.assertEqual(plan['sdk_requests'][0]['area'],2)
         self.assertEqual(self.provider_requests[0]['capabilities']['moves'],{})
@@ -96,11 +100,42 @@ class VLMDispatch(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(self.sdk,[dict(motion=1002,area=2,interrupt=False)])
         self.assertEqual(self.d.state['gesture'],'wave_right')
         self.assertFalse(self.d.plan_task.done())
-        await ws.send_json(dict(action='acknowledge_motion_complete',confirmed=True))
         await asyncio.wait_for(self.d.plan_task,2)
+        self.assertIsNone(self.d.state['gesture'])
+        self.assertFalse(self.d.state['arm_pending'])
+        self.assertTrue(self.d.state['native_result']['accepted'])
+        self.assertNotIn('acknowledge_motion_complete',[m['action'] for m in self.commands])
         await ws.send_json(dict(action='plan_execute',plan_id=plan['plan_id'],confirmed=True))
         error=await self.receive_error(ws)
         self.assertIn('이미 실행',error['message']);self.assertEqual(len(self.sdk),1)
+        await ws.close()
+
+    async def test_sdk_failure_ends_plan_and_surfaces_rejection(self):
+        self.sdk_reply_state=2
+        _,plan=await self.infer()
+        ws=await self.client.ws_connect('/ws',headers={'Origin':self.origin});await ws.receive_json()
+        await ws.send_json(dict(action='plan_execute',plan_id=plan['plan_id'],confirmed=True))
+        for _ in range(100):
+            if self.d.plan_task and self.d.plan_task.done():break
+            await asyncio.sleep(.01)
+        self.assertTrue(self.d.plan_task.done())
+        self.assertEqual(self.d.pipeline_status['stage'],'rejected')
+        self.assertIsNone(self.d.state['gesture']);self.assertFalse(self.d.state['native_result']['accepted'])
+        self.assertEqual(len(self.sdk),1)
+        await ws.close()
+
+    async def test_next_preset_needs_no_manual_completion_message(self):
+        ws=await self.client.ws_connect('/ws',headers={'Origin':self.origin});await ws.receive_json()
+        for _ in range(2):
+            _,plan=await self.infer()
+            previous=self.d.plan_task
+            await ws.send_json(dict(action='plan_execute',plan_id=plan['plan_id'],confirmed=True))
+            for _ in range(100):
+                if self.d.plan_task is not previous:break
+                await asyncio.sleep(.01)
+            await asyncio.wait_for(self.d.plan_task,2)
+        self.assertEqual(len(self.sdk),2)
+        self.assertEqual(sum(m['action']=='gesture' for m in self.commands),2)
         await ws.close()
 
     async def test_mode_change_after_inference_blocks_dispatch(self):

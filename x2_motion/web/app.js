@@ -32,6 +32,7 @@ function startHold(direction) {
 }
 function stop() { instructionEpoch++;endHold();send({action:'stop'}); }
 function update() {
+  if(typeof updateRobotOverview==='function')updateRobotOverview(state);
   const connected=state.connected && socket?.readyState===WebSocket.OPEN;
   $('connection').textContent=config.mode==='replay'?'저장 사진 · 실물 미연결':config.read_only?(connected?'● X2 연결 · 읽기 전용':'X2 연결 확인 중 · 읽기 전용'):connected?(state.fsm===null?'SSH 연결 · 운동 RPC 응답 대기':'● AGIBOT X2 연결됨'):'AGIBOT X2 연결 확인 중';
   $('connection').className='badge '+(connected?'ok':'bad');
@@ -39,11 +40,11 @@ function update() {
   const ours=state.armed && state.controller==='you';
   $('arm').disabled=!connected || !state.ready || (!$('physical').checked&&!ours) || state.controller==='other' || (!ours&&!!state.gesture);
   $('arm').textContent=ours?'제어 해제':'제어 활성화';
-  $('control-status').textContent=state.error || (config.read_only?'읽기 전용으로 실행 중입니다.':!connected?'X2 연결을 기다리는 중입니다.':state.controller==='other'?'다른 창에서 제어 중입니다.':!state.ready?`현재 ${state.fsm??'조회 중'} · 내장 프리셋 실행은 안정 서기 응답을 기다립니다.`:state.gesture?`${gestures[state.gesture]||state.gesture} · 실제 종료 후 현장 확인 버튼을 누르세요.`:ours?'활성화됨 · 허용된 프리셋을 선택하세요.':'현장 조건을 확인한 뒤 프리셋을 선택하세요.');
+  $('control-status').textContent=state.error || (config.read_only?'읽기 전용으로 실행 중입니다.':!connected?'X2 연결을 기다리는 중입니다.':state.controller==='other'?'다른 창에서 제어 중입니다.':!state.ready?`현재 ${state.fsm??'조회 중'} · 내장 프리셋 실행은 안정 서기 응답을 기다립니다.`:state.gesture?`${gestures[state.gesture]||state.gesture} · SDK 응답을 기다립니다.`:ours?'활성화됨 · 허용된 프리셋을 선택하세요.':'현장 조건을 확인한 뒤 프리셋을 선택하세요.');
   document.querySelectorAll('.dir').forEach(x=>x.disabled=!config.control_permissions?.movement||!ours||!!state.gesture||state.execution_source==='plan');
   $('execute-instruction').disabled=!connected || !state.ready || !canExecute() || state.controller==='other' || inFlight;
   $('infer').disabled=inFlight;
-  const profile=state.profile||{forward_mps:.1,lateral_mps:.1,yaw_rps:.1,burst_seconds:1};
+  const profile=state.profile||{forward_mps:.2,lateral_mps:.1,yaw_rps:.1,burst_seconds:1};
   $('limit-forward').textContent=profile.forward_mps.toFixed(2)+' m/s';$('limit-lateral').textContent=profile.lateral_mps.toFixed(2)+' m/s';$('limit-yaw').textContent=profile.yaw_rps.toFixed(2)+' rad/s';$('limit-burst').textContent=profile.burst_seconds?profile.burst_seconds.toFixed(1)+'초':'시간 상한 없음';
   if(!profileDirty)document.querySelectorAll('[data-setting]').forEach(x=>x.value=profile[x.dataset.setting]);
   $('apply-settings').disabled=!connected||state.controller==='other'||state.moving||!!state.gesture;
@@ -52,7 +53,7 @@ function update() {
   document.querySelectorAll('[data-gesture]').forEach(x=>x.disabled=!config.control_permissions?.presets||!connected||!state.ready||!canExecute()||state.controller==='other'||inFlight||!!state.gesture||!state.arm_actions?.[x.dataset.gesture]);
   $('custom-play').disabled=!config.control_permissions?.presets||!connected||!state.ready||!canExecute()||state.controller==='other'||!!state.gesture||!state.custom_actions?.[$('custom-select').value];
   $('custom-stop').disabled=!connected;
-  $('arm-progress').textContent=state.gesture?`${gestures[state.gesture]||state.gesture} · ${state.arm_pending?'SDK 응답 대기':'현장에서 종료 확인 필요'} · 수락 응답은 완료를 뜻하지 않습니다.`:'';
+  $('arm-progress').textContent=state.gesture?`${gestures[state.gesture]||state.gesture} · SDK 응답 대기`:'';
   document.querySelectorAll('.motion-execute').forEach(x=>x.disabled=!config.control_permissions?.presets||!connected||!state.ready||!canExecute()||state.controller==='other'||!!state.gesture||inFlight||!(x.dataset.kind==='custom_motion'?state.custom_actions?.[x.dataset.name]:state.arm_actions?.[x.dataset.name]));
   const progress=state.pipeline_status;
   if(progress){
@@ -145,7 +146,7 @@ async function submitInstruction(execute=false){
     $('actions').replaceChildren();
     if(!result.actions.length){const el=document.createElement('p');el.className='no-action';el.textContent='이동 명령 미전송: VLM이 동작을 제안하지 않았습니다. 위 판단 이유와 실제 주변 환경을 확인하세요.';$('actions').append(el);}
     result.actions.forEach((action,index)=>{
-      const row=document.createElement('div');row.className='action-row';const text=document.createElement('div');const name=document.createElement('b');name.textContent=`${index+1}. ${action.type==='gesture'?(gestures[action.name]||action.name):action.type==='custom_motion'?action.name:action.type==='mode'?(manualModes[action.name]?.label||action.name):action.type==='stop'?'정지':(names[action.direction]||'이동')}${action.type==='move'?' · ['+action.velocity.join(', ')+'] m/s, m/s, rad/s':''}${['gesture','custom_motion'].includes(action.type)?' · 실제 종료 후 현장 확인':action.seconds?' · '+action.seconds+'초':''}`;const reason=document.createElement('small');reason.textContent=action.reason;text.append(name,reason);
+      const row=document.createElement('div');row.className='action-row';const text=document.createElement('div');const name=document.createElement('b');name.textContent=`${index+1}. ${action.type==='gesture'?(gestures[action.name]||action.name):action.type==='custom_motion'?action.name:action.type==='mode'?(manualModes[action.name]?.label||action.name):action.type==='stop'?'정지':(names[action.direction]||'이동')}${action.type==='move'?' · ['+action.velocity.join(', ')+'] m/s, m/s, rad/s':''}${['gesture','custom_motion'].includes(action.type)?' · SDK 응답 후 요청 해제':action.seconds?' · '+action.seconds+'초':''}`;const reason=document.createElement('small');reason.textContent=action.reason;text.append(name,reason);
       const button=document.createElement('button');button.className='execute-step';button.textContent='이 단계 실행';button.onclick=()=>{endHold();if(send({action:'plan_step',plan_id:result.plan_id,index,confirmed:$('physical').checked,support_confirmed:$('joint-support-confirmed').checked})){}else notify('대시보드 연결이 끊겨 전송하지 못했습니다.');};row.append(text,button);$('actions').append(row);
     });update();
     if(execute&&result.actions.length){
@@ -163,7 +164,7 @@ $('infer').onclick=()=>submitInstruction(false);
 $('execute-instruction').onclick=()=>submitInstruction(true);
 function setVerdict(status,reason,blockReason){
   const v=$('verdict');if(!v)return;
-  const map={ready:['실행 승인','READY','ok'],blocked:['실행 거절','BLOCKED','bad'],unsupported:['미지원 명령','UNSUPPORTED','warn'],clarify:['확인 필요','CLARIFY','warn'],analysis_only:['관측만','ANALYSIS','neutral'],error:['요청 실패','ERROR','bad']};
+  const map={ready:['AI 실행 가능','READY','ok'],blocked:['실행 거절','BLOCKED','bad'],unsupported:['미지원 명령','UNSUPPORTED','warn'],clarify:['확인 필요','CLARIFY','warn'],analysis_only:['관측만','ANALYSIS','neutral'],error:['요청 실패','ERROR','bad']};
   const m=map[status]||['판정',String(status||'').toUpperCase()||'PLAN','neutral'];
   v.hidden=false;v.dataset.kind=m[2];
   $('verdict-badge').textContent=m[1];

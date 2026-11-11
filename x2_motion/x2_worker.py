@@ -18,6 +18,18 @@ from posture_actions import POSTURES,validate_posture_request,prepare_posture_re
 from sdk_catalog import READ_QUERIES
 
 
+def finish_native_request(state,context,code,sdk_state,service,event):
+    """Release request ownership on SDK reply, without asserting physical completion."""
+    accepted=code==0 and sdk_state in (1,200,300,400)
+    result=dict(name=context.get('name'),request_id=context.get('request_id'),code=code,
+                sdk_state=sdk_state,accepted=accepted,service=service,physical_outcome='NOT_VERIFIED')
+    state.update(gesture=None,arm_pending=False,native_result=result)
+    if not accepted:
+        state['armed']=False
+        state['error']='제조사 모션 요청 거부 · code '+str(code)+' · state '+str(sdk_state)
+    event('arm_action_ack',**result)
+
+
 def main():
     # Vendor FastDDS prints discovery logs on stdout. Keep the JSON transport on
     # its own descriptor, and suppress native discovery logs in this worker only.
@@ -79,7 +91,7 @@ def main():
     state = dict(type='state', backend='aimdk_ros2_humble', sdk_version=sdk_version,
                  worker_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
                  model='X2 Ultra t2d5', fsm=None, fsm_at=0., ready=False, armed=False,
-                 moving=False, gesture=None, arm_pending=False,seat_hold_pending=False,posture_pending=None,error='',
+                 moving=False, gesture=None, arm_pending=False,native_result=None,seat_hold_pending=False,posture_pending=None,error='',
                  profile=dict(DEFAULT_PROFILE), arm_actions={k:v['id'] for k,v in available_presets.items()},
                  custom_actions={}, hand_status='확인 중', battery_percent=None,
                  joint_values={}, telemetry={}, sdk_queries={},sdk_services={},read_only=not enabled,
@@ -213,7 +225,7 @@ def main():
         if not enabled:raise ValueError('읽기 전용: 실행 허용으로 시작하지 않았습니다.')
         if time.monotonic()-mode_at>2:raise ValueError('최신 모드 응답이 없습니다.')
         if state['fsm'] not in ('STAND_DEFAULT','LOCOMOTION_DEFAULT') or state.get('fsm_status')!=100:raise ValueError('현재 '+str(state['fsm'])+' · 안정 서기와 모드 실행 상태를 확인하세요.')
-        if state['gesture'] or command_busy or state['posture_pending'] or state['seat_hold_pending']:raise ValueError('이전 요청의 완료 확인이 필요합니다.')
+        if state['gesture'] or command_busy or state['posture_pending'] or state['seat_hold_pending']:raise ValueError('이전 요청의 SDK 응답 또는 자세 전환을 기다리세요.')
     def mutate(name,request,callback,context=None):
         nonlocal command_busy
         if not enabled:raise ValueError('읽기 전용입니다.')
@@ -236,11 +248,8 @@ def main():
         if response.response.header.code!=0:raise ValueError('입력 소스 등록 실패')
         registered=True;state['armed']=True;state['error']='';event('armed')
     def native_response(response,context):
-        state['arm_pending']=False
-        code=response.response.header.code
-        event('arm_action_ack',code=code,sdk_state=response.response.state.value,service='SetMcPresetMotion',
-              name=context.get('name'),request_id=context.get('request_id'),physical_outcome='NOT_VERIFIED')
-        if code!=0:state['gesture']=None;state['armed']=False;state['error']='제조사 프리셋 요청 거부 · code '+str(code)
+        finish_native_request(state,context,response.response.header.code,response.response.state.value,
+                              'SetMcPresetMotion',event)
     def handle(msg):
         nonlocal desired,hold_at,hold_start,must_release,mode_target,posture_deadline,hold_limit
         if not isinstance(msg,dict):raise ValueError('요청은 JSON 객체여야 합니다.')
@@ -255,12 +264,7 @@ def main():
         if action in ('stop','release','disarm'):
             release(action!='release');return
         if action=='gesture_release':
-            event('native_motion_status',note='프리셋은 자동 취소되지 않습니다. 리모컨 정지 또는 현장 완료 확인을 사용하세요.');return
-        if action=='acknowledge_motion_complete':
-            if msg.get('confirmed') is not True:raise ValueError('현장 완료 확인이 필요합니다.')
-            if command_busy:raise ValueError('SDK 응답을 기다리세요. 요청 진행 중에는 완료 처리할 수 없습니다.')
-            state['gesture']=None;state['arm_pending']=False;state['armed']=False;state['error']=''
-            event('native_completion_operator_confirmed',physical_verification='OPERATOR_ONLY');return
+            event('native_motion_status',note='프리셋은 자동 취소되지 않습니다. 즉시 멈추려면 리모컨 정지를 사용하세요.');return
         if not enabled:raise ValueError('읽기 전용: 로봇 제어 요청을 전송하지 않았습니다.')
         if action=='posture':
             now=time.monotonic();name=msg.get('name')
@@ -338,19 +342,17 @@ def main():
             if not spec:raise ValueError('설치 SDK에서 확인되지 않은 프리셋입니다. 버전 호환을 먼저 확인하세요.')
             release(False);req=prepare_preset_request(SetMcPresetMotion.Request(),spec['name'],state['arm_actions'])
             mutate('SetMcPresetMotion',req,lambda response:native_response(response,msg),msg)
-            state['gesture']=spec['name'];state['arm_pending']=True;return
+            state['gesture']=spec['name'];state['arm_pending']=True;state['native_result']=None;return
         if action=='custom_motion':
             spec=state['custom_actions'].get(msg.get('name'))
             if not spec or msg.get('confirmed') is not True:raise ValueError('기기에서 조회한 저장 동작만 실행할 수 있습니다.')
             req=ExecuteActionResource.Request();req.resource_key=spec['resource_key'];req.resource_version=spec['version']
             req.meta=json.dumps({'resource_type':'BODY_MONTION' if 'onnx' in spec['resource_key'] else 'ARM_MONTION'})
             def resource_response(response):
-                state['arm_pending']=False
-                event('arm_action_ack',code=response.header.header.code,message=response.header.message,service='ExecuteActionResource',physical_outcome='NOT_VERIFIED')
-                if response.header.header.code!=0 or response.header.status.value!=1:
-                    state['gesture']=None;state['armed']=False;state['error']='제조사 저장 모션 요청 거부 · '+response.header.message
+                finish_native_request(state,msg,response.header.header.code,response.header.status.value,
+                                      'ExecuteActionResource',event)
             mutate('ExecuteActionResource',req,resource_response,msg)
-            state['gesture']=spec['name'];state['arm_pending']=True;return
+            state['gesture']=spec['name'];state['arm_pending']=True;state['native_result']=None;return
         raise ValueError('직접 관절 실행은 제공하지 않습니다.' if action=='arm_joint_pose' else '알 수 없는 요청입니다.')
     next_mode=next_state=next_joints=next_resources=next_velocity=next_diagnostics=0.
     try:

@@ -7,7 +7,9 @@
 | Python 본체 중복 설치 | 없음 | 기존 Python 3.13.3으로 `.venv` 생성, `system_python_installed=false` |
 | 환경 재사용 | 통과 | 두 번째 `setup.sh`에서 `environment=reused`, pip 재실행 없음 |
 | Bash 진입점 | 통과 | Git Bash `bash -n`, `preflight.sh --offline --test` 실행 |
-| SDK·VLM·실행 제한·기록·프로세스 | 41개 테스트 통과 | `python -m unittest discover -s x2_motion` |
+| SDK·VLM·실행 제한·기록·프로세스 | 47개 테스트 통과 | `python -m unittest discover -s x2_motion` |
+| 프리셋 요청 자동 해제 | 통과 | SDK 응답 후 다음 프리셋 요청, 요청 ID 일치, 실패 응답 표시와 구형 수동 확인 명령 제거 검사 |
+| 상태 UI | 통과 | 상단 배터리 잔량·미수신·0% 표시, 30관절 슬라이더·오류 표시, 모바일 배치와 연속 프리셋 브라우저 확인 |
 | 단일 서버/포트 관리 | 통과 | 백그라운드 시작→동일 PID 재사용→옵션 충돌 거부→상태→종료 테스트 |
 | DGX Linux ARM64 의존성 | 통과 | CPython 3.12/aarch64용 모든 런타임 wheel 다운로드 확인 |
 | 단일 기기 → X2 직접 연결 | 통과 | 로컬 SSH/SFTP X2 fixture에서 워커 배포·상태·RGB·캡처 확인 |

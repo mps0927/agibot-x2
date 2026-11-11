@@ -14,7 +14,7 @@ def permissions(full=False, presets=False,seat=False,postures=False):
                 mode_switch=bool(full or postures),seat_hold=bool(seat or postures),posture_actions=bool(postures))
 
 def command_allowed(action, scopes, mode=None):
-    if action in ('stop','release','disarm','gesture_release','configure','acknowledge_motion_complete'):
+    if action in ('stop','release','disarm','gesture_release','configure'):
         return True
     if action=='arm':return scopes['movement'] or scopes['presets']
     if action=='hold':return scopes['movement']
@@ -43,7 +43,7 @@ def seat_hold_check(mode, mode_age,confirmed=False,leg_age=None,joints=None):
 def preset_block_reason(mode, scopes, connected=True, busy=False):
     if not connected:return '로봇 연결과 최신 상태를 기다리는 중입니다.'
     if not scopes['presets']:return '대시보드 설정에서 프리셋 실행이 잠겨 있습니다.'
-    if busy:return '이전 동작의 종료 확인을 기다리는 중입니다.'
+    if busy:return '이전 모션 요청의 SDK 응답을 기다리는 중입니다.'
     if mode not in STABLE_MODES:return '현재 '+str(mode)+' · 내장 프리셋은 운영자가 안정 서기를 준비한 뒤 요청할 수 있습니다. VLM은 기립·모드 전환을 수행하지 않습니다.'
     return ''
 
@@ -55,7 +55,7 @@ def validate_plan_execution(plan,actions,state,state_age,scopes,now):
     if not state.get('connected') or state_age>1:raise ValueError('최신 로봇 상태를 기다리세요.')
     if state.get('fsm') not in STABLE_MODES or state.get('fsm_status')!=100:
         raise ValueError('운영자가 안정 서기를 준비하고 모드 실행 상태를 확인하세요.')
-    if state.get('gesture') or state.get('arm_pending'):raise ValueError('이전 프리셋의 실제 종료 확인을 기다리고 있습니다.')
+    if state.get('gesture') or state.get('arm_pending'):raise ValueError('이전 모션 요청의 SDK 응답을 기다리고 있습니다.')
     if state.get('fsm')!=plan.get('fsm'):raise ValueError('계획 생성 후 모드가 바뀌었습니다. 다시 생성하세요.')
     if plan.get('sdk_version')!=state.get('sdk_version'):raise ValueError('SDK 버전이 바뀌었습니다. 다시 생성하세요.')
     mapped=preset_mapping(state.get('arm_actions',{}))

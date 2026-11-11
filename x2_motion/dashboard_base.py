@@ -168,8 +168,10 @@ class Dashboard:
                     elif data.get("event") == "arm_request_sent":
                         self.pipeline_status=dict(stage="dispatch",message="팔/사용자 모션 요청 전송 · 전체 동작의 응답을 기다리는 중입니다.",at=time.time())
                     elif data.get("event") == "arm_action_ack":
-                        self.pipeline_status = dict(stage="accepted" if data.get("code") == 0 else "rejected",
-                            message="X2 팔 동작 요청 응답 · 실제 동작을 확인하세요.", code=data.get("code"), at=time.time())
+                        self.state.update(gesture=None,arm_pending=False,native_result=data)
+                        self.pipeline_status = dict(stage="accepted" if data.get("accepted") else "rejected",
+                            message="X2 모션 요청 수락" if data.get('accepted') else "X2 모션 요청 거부",
+                            code=data.get("code"), at=time.time())
                     elif data.get("event") == "arm_release_ack":
                         self.pipeline_status = dict(stage="stopped" if data.get("code") == 0 else "rejected",
                             message="X2 팔 복귀 요청 응답 · 실제 복귀를 확인하세요.", code=data.get("code"), at=time.time())
@@ -234,14 +236,17 @@ class Dashboard:
             await self.send(dict(action="set_mode",mode=action["name"],confirmed=True,condition_confirmed=True))
             return
         if kind in ('gesture','custom_motion'):
-            began=time.monotonic()
-            await self.progress('dispatch','매핑된 프리셋 한 개를 요청합니다. 실제 종료 확인 전까지 다음 동작을 기다립니다.',
+            began=time.monotonic();request_id=uuid.uuid4().hex
+            await self.progress('dispatch','매핑된 모션을 요청하고 SDK 응답을 기다립니다.',
                                 kind=kind,command=action['name'])
-            await self.send(dict(action=kind,name=action['name'],confirmed=True))
+            await self.send(dict(action=kind,name=action['name'],confirmed=True,request_id=request_id))
             while self.owner is ws and not ws.closed:
                 if self.state.get('error'):raise RuntimeError(self.state['error'])
-                if self.state_at>=began and (self.state.get('gesture') or self.state.get('arm_pending')):return
-                if time.monotonic()-began>3:raise RuntimeError('프리셋 요청 상태를 확인하지 못했습니다. 현장에서 실제 동작을 확인하세요.')
+                reply=self.state.get('native_result') or {}
+                if reply.get('request_id')==request_id:
+                    if not reply.get('accepted'):raise RuntimeError('SDK가 모션 요청을 거부했습니다.')
+                    return
+                if time.monotonic()-began>8:raise RuntimeError('모션 요청의 SDK 응답을 받지 못했습니다.')
                 await asyncio.sleep(.025)
             return
         end = time.monotonic()+action["seconds"] if action["seconds"] is not None else None
@@ -265,11 +270,6 @@ class Dashboard:
                 if self.owner is not ws or ws.closed:return
                 await self.run_step(ws,action)
                 if action.get("type")=="stop":return
-                if action.get("type") in ("gesture","custom_motion"):
-                    # Wait for the native trajectory/release; never overlap base motion.
-                    while self.owner is ws and (self.state.get("gesture") or self.state.get("arm_pending")):
-                        if self.state.get("error"):raise RuntimeError(self.state["error"])
-                        await asyncio.sleep(.05)
                 if self.state.get("error"):raise RuntimeError(self.state["error"])
         except asyncio.CancelledError:
             raise
@@ -351,12 +351,6 @@ class Dashboard:
                             await self.cancel_plan()
                             await self.send(dict(action="set_mode",mode=msg["mode"],confirmed=True,condition_confirmed=True))
                             self.owner=None
-                    elif action == "acknowledge_motion_complete":
-                        if msg.get("confirmed") is not True:
-                            raise ValueError("현장에서 프리셋 종료를 확인하세요.")
-                        await self.send(dict(action=action, confirmed=True))
-                        await self.progress('completed','운영자가 실제 프리셋 종료를 확인했습니다.',physical_verification='OPERATOR_ONLY')
-                        self.owner = None
                     elif action in ("stop", "disarm", "gesture_release"):
                         await self.cancel_plan()
                         await self.send(dict(action=action))

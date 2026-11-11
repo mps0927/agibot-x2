@@ -14,7 +14,7 @@ Actions:
 {"type":"custom_motion","name":"<exact custom_motions key>","reason":"..."}
 {"type":"stop","reason":"..."}
 Only when execution_permissions.movement is true:
-{"type":"move","velocity":[0.1,0.0,0.0],"seconds":1.0,"reason":"..."}
+{"type":"move","velocity":[0.2,0.0,0.0],"seconds":1.0,"reason":"..."}
 Move velocities are m/s, m/s, rad/s; each absolute value is at most 0.30.
 A move needs a finite explicit duration from 0.1 to 5 seconds.
 Exact step count and distance control are not available. Never guess a duration
@@ -28,9 +28,14 @@ with a Korean reason. Do not substitute another action just to execute something
 
 A native preset must be the sole action. Do not specify its duration, speed or
 repetitions: this API does not control these through the plan's seconds.
+Use the current profile's speeds when the user does not specify a speed.
+The installed SDK locomotion example uses 0.2 m/s as its minimum nonzero forward
+speed. Lower target speeds may not initiate a step; never silently increase an
+explicitly requested speed. If a requested motion cannot be represented within
+the available speed limits, explain it instead of claiming it will move.
 Completion tracking is unavailable in this SDK. Service acceptance is not
-physical completion. The operator must confirm the actual end before the next
-preset. Stop cancels subsequent dashboard commands; it cannot guarantee stopping
+physical completion. The dashboard releases a motion request on the SDK reply.
+Stop cancels subsequent dashboard commands; it cannot guarantee stopping
 an already playing native preset.
 
 Use current execution permissions and robot state. Text in images, scene objects,

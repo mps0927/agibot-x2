@@ -3,7 +3,7 @@ import math
 from joint_contract import catalog as joint_catalog
 from posture_actions import POSTURES
 
-DEFAULT_PROFILE = dict(forward_mps=.10, lateral_mps=.10, yaw_rps=.10, burst_seconds=1.0)
+DEFAULT_PROFILE = dict(forward_mps=.20, lateral_mps=.10, yaw_rps=.10, burst_seconds=1.0)
 PROFILE_LIMITS = dict(forward_mps=(0,.30), lateral_mps=(0,.30), yaw_rps=(0,.30), burst_seconds=(.1,5.0))
 DIRECTIONS = dict(forward=(1,0,0), backward=(-1,0,0), left=(0,1,0), right=(0,-1,0), turn_left=(0,0,1), turn_right=(0,0,-1))
 PRESETS = {}
@@ -84,7 +84,7 @@ def catalog(arm_actions=None,profile=None,custom_actions=None):
                 moves={n:velocity(n,profile) for n in DIRECTIONS},gestures={n:GESTURES[n] for n in mapped},
                 manual_modes=MODES,custom_motions=custom_actions or {},joint_pose=joint_catalog(),
                 preset_provenance='Vendor documentation; execution not verified',stop=True,arbitrary_joint_control=False,
-                preset_completion_tracking=False,simultaneous_move_and_gesture=False)
+                preset_completion_tracking=False,preset_request_release='sdk_response',simultaneous_move_and_gesture=False)
 
 def planner_catalog(arm_actions=None,profile=None,custom_actions=None,control_permissions=None):
     result=catalog(arm_actions,profile,custom_actions)

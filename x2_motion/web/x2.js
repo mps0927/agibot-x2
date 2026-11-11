@@ -16,12 +16,10 @@ async function refreshRobotFacts(){
       `기종 ${v.model||'X2 Ultra t2d5'}`,
       `SDK ${v.sdk_version||'조회 중'}`,
       `모드 ${v.fsm||'응답 대기'}`,
-      `배터리 ${v.battery_percent??'—'}%`,
       `손 ${v.hand_status||'조회 중'}`,
       `제어 요청 ${v.control_requests_sent??0}건 · 속도 발행 ${v.velocity_publications??0}건`
     ].join('  |  ');
-    document.getElementById('live-joints').textContent=JSON.stringify(v.joint_values||{},null,2);
-    document.getElementById('preset-finished').disabled=!v.gesture;
+    if(typeof updateRobotOverview==='function')updateRobotOverview(v);
     document.getElementById('preset-block-reason').textContent=v.preset_block_reason||'안정 서기 응답 정상 · 현장 조건 확인 후 프리셋을 요청할 수 있습니다.';
     document.querySelectorAll('[data-gesture]').forEach(button=>{
       button.title=v.preset_block_reason||(!v.arm_actions?.[button.dataset.gesture]?'설치 SDK에 동작 상수가 없습니다.':'현장 조건 확인 후 요청');
@@ -69,10 +67,6 @@ document.getElementById('use-current-joints').onclick=async()=>{
 document.getElementById('seat-hold').onclick=async()=>{
   try{const v=await api('/api/seat-hold',{confirmed:document.getElementById('seat-support').checked});notify(v.message);document.getElementById('seat-status').textContent=v.message;}
   catch(e){notify(e.message);document.getElementById('seat-status').textContent=e.message;}
-};
-document.getElementById('preset-finished').onclick=()=>{
-  if(confirm('실제 로봇의 프리셋 동작이 끝난 것을 현장에서 확인했나요? 이 버튼은 동작을 정지시키지 않습니다.'))
-    send({action:'acknowledge_motion_complete',confirmed:true});
 };
 document.getElementById('save-model-key').onclick=async()=>{
   const input=document.getElementById('model-key');
