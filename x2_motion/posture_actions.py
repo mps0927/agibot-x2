@@ -5,7 +5,7 @@ POSTURES={
         required_mode='STAND_DEFAULT',
         steps=['높이 35–40cm의 등받이 의자를 준비하고 로봇이 앉을 위치에 맞춥니다.',
                '보조자가 뒤 손잡이를 잡고 지지하며 안정 서기 상태와 주변 공간을 확인합니다.',
-               '컨트롤러 L2와 방향키 ←를 동시에 짧게 눌러 앉기를 실행합니다.',
+               '대시보드 상단의 의자에 앉기 버튼을 한 번 누릅니다.',
                '몸통과 엉덩이가 의자에 안정적으로 지지됐는지 현장에서 확인합니다.'],
         reason='MC ActionRuler와 등록 로그에서 STAND_DEFAULT → SIT_DOWN_DEFAULT → SIT_JOINT_DEFAULT 경로 확인.'),
     'stand_up_from_seat':dict(label='의자에서 일어서기',controller='↑ + □',sdk_callable=True,
@@ -13,7 +13,7 @@ POSTURES={
         required_mode='SIT_JOINT_DEFAULT',
         steps=['35–40cm 등받이 의자에서 착석 자세를 준비하고 양발 바닥이 지면에 닿는지 확인합니다.',
                '보조자가 뒤 손잡이로 지지하고 로봇 앞뒤 동작 공간을 확보합니다.',
-               '앉은 자세 고정은 ↑ + ×입니다. 실제 일어서기는 ↑와 □를 동시에 짧게 누릅니다.',
+               '대시보드에서 착석 자세 고정 상태를 확인하고 일어서기 버튼을 한 번 누릅니다.',
                '실제 기립과 안정 서기 진입을 확인합니다. OmniHand 장착 기기는 누운 자세에서 기립시키지 않습니다.'],
         reason='실제 RC/MC 로그에서 SIT_JOINT_DEFAULT → SIT_UP_DEFAULT → STAND_DEFAULT 전환과 수락 응답 확인.'),
 }

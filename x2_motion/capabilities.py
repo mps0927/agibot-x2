@@ -22,7 +22,7 @@ for key,label,ident in [('clap','박수',3017),('hug','포옹',3008),('cheer','�
     _preset(key,label,ident,[(11,'')])
 GESTURES={name:dict(id=p['id'],label=p['label']) for name,p in PRESETS.items()}
 MODES={
- 'stable_stand':dict(id='STAND_DEFAULT',label='안정 서기',condition='이미 서 있고 양발 접지·지지·리모컨 정지를 확인',from_=['JOINT_DEFAULT','LOCOMOTION_DEFAULT','STAND_DEFAULT']),
+ 'stable_stand':dict(id='STAND_DEFAULT',label='안정 서기',condition='이미 서 있고 양발 접지·지지·모든 조종 입력 정지를 확인',from_=['JOINT_DEFAULT','LOCOMOTION_DEFAULT','STAND_DEFAULT']),
  'position_stand':dict(id='JOINT_DEFAULT',label='서기 준비 · 위치제어',condition='서 있는 로봇의 하중을 지지하고 관절 주변 공간 확보',from_=['STAND_DEFAULT','LOCOMOTION_DEFAULT','JOINT_DEFAULT']),
  'damping':dict(id='DAMPING_DEFAULT',label='댐핑',condition='의자 또는 크레인이 로봇 하중을 지지함'),
  'zero_torque':dict(id='PASSIVE_DEFAULT',label='영토크 · 힘 해제',condition='힘이 풀려도 쓰러지지 않도록 로봇 하중 지지'),
