@@ -24,12 +24,15 @@ def remote_paths():
     return home,sdk
 
 def ssh_options():
+    def local_path(value):
+        path=Path(value).expanduser()
+        return str(path if path.is_absolute() else ROOT/path)
     host=os.environ.get('X2_SSH_HOST','10.0.1.41')
     if not re.fullmatch(r'[A-Za-z0-9_.:-]{1,253}',host):raise ValueError('Invalid X2_SSH_HOST (use address only; set user separately)')
     username=os.environ.get('X2_SSH_USER','agi');remote_paths()
     options=dict(host=host,username=username,
-        known_hosts=str(Path(os.environ.get('X2_SSH_KNOWN_HOSTS','~/.ssh/known_hosts')).expanduser()),
+        known_hosts=local_path(os.environ.get('X2_SSH_KNOWN_HOSTS','~/.ssh/known_hosts')),
         connect_timeout=5,login_timeout=8,keepalive_interval=2,keepalive_count_max=3)
-    if os.environ.get('X2_SSH_KEY'):options['client_keys']=[str(Path(os.environ['X2_SSH_KEY']).expanduser())]
+    if os.environ.get('X2_SSH_KEY'):options['client_keys']=[local_path(os.environ['X2_SSH_KEY'])]
     if os.environ.get('X2_SSH_PASSWORD'):options['password']=os.environ['X2_SSH_PASSWORD']
     return options
