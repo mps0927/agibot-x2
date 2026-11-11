@@ -46,7 +46,7 @@ class SeatPolicy(unittest.TestCase):
 
 class SeatAPI(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        args=argparse.Namespace(offline=True,read_only=False,allow_control=False,allow_presets=True,allow_seat_hold=True,origin='',operator_ready=False,camera_port=18013,simulation=False)
+        args=argparse.Namespace(offline=True,read_only=False,allow_control=False,allow_presets=True,allow_seat_hold=True,origin='',operator_ready=False)
         self.app=create_app(args);self.d=self.app['dashboard'];self.sent=[]
         async def send(msg):self.sent.append(msg)
         self.d.send=send

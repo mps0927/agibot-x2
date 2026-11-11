@@ -2,7 +2,6 @@
 import math
 SEAT_MODE = 'SIT_JOINT_DEFAULT'
 STABLE_MODES = ('STAND_DEFAULT', 'LOCOMOTION_DEFAULT')
-SEAT_UNSUPPORTED = '착석 고정 모드는 기기에서 조회됐지만 공개 SDK의 전환 대상으로 문서화되지 않았습니다. 제조사 지원 호출을 확인하기 전까지 ↑ + ×를 사용하세요.'
 MC_REJECTIONS = {
     2:'요청 형식 또는 입력 소스가 올바르지 않음', 3:'기기 설정에 등록되지 않은 동작',
     4:'현재 자세에서 허용되지 않는 동작', 5:'복구 동작 진행 중', 6:'제조사 안전 보호가 전환을 거부함',

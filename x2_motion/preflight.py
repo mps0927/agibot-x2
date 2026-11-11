@@ -30,12 +30,12 @@ def main():
     from app import parse_args
     options=[v for v in unknown if v!='--background']
     if args.env_file:options+=['--env-file',args.env_file]
-    parse_args((['--offline'] if mode=='--offline' else [])+options)
+    dashboard_args=parse_args((['--offline'] if mode=='--offline' else [])+options)
     print('Host: Python '+sys.version.split()[0]+'; aiohttp / Pillow / AsyncSSH OK')
     if args.test:
         subprocess.run([sys.executable,'-m','unittest','discover','-q','-s',str(ROOT/'x2_motion'),'-p','test_*.py'],check=True,cwd=ROOT)
     if mode=='--field':asyncio.run(check_robot())
-    print('Preflight '+mode+': OK (port '+os.environ.get('X2_PORT','8766')+')')
+    print('Preflight '+mode+': OK (port '+str(dashboard_args.port)+')')
 
 if __name__=='__main__':
     try:main()

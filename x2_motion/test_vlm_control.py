@@ -44,7 +44,7 @@ class MappingContract(unittest.TestCase):
 
 class VLMDispatch(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        args=argparse.Namespace(offline=True,read_only=False,allow_control=False,allow_presets=True,origin='',operator_ready=False,camera_port=18013,simulation=False)
+        args=argparse.Namespace(offline=True,read_only=False,allow_control=False,allow_presets=True,origin='',operator_ready=False)
         self.application=create_app(args);self.d=self.application['dashboard']
         self.client=TestClient(TestServer(self.application));await self.client.start_server()
         self.origin=str(self.client.make_url('/')).rstrip('/')

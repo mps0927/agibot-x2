@@ -47,7 +47,7 @@ class Contracts(unittest.TestCase):
 
 class ReadOnlyBoundary(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
-        args=argparse.Namespace(offline=True,read_only=True,allow_control=False,origin='',operator_ready=False,camera_port=18013,simulation=False)
+        args=argparse.Namespace(offline=True,read_only=True,allow_control=False,origin='',operator_ready=False)
         self.application=create_app(args)
         self.client=TestClient(TestServer(self.application))
         await self.client.start_server()
@@ -139,7 +139,7 @@ class ScopedTransport(unittest.IsolatedAsyncioTestCase):
     async def test_preset_only_transport_rejects_other_control(self):
         from app import X2Dashboard
         import time
-        args=argparse.Namespace(offline=True,read_only=False,allow_control=False,allow_presets=True,origin='',operator_ready=False,camera_port=18013,simulation=False)
+        args=argparse.Namespace(offline=True,read_only=False,allow_control=False,allow_presets=True,origin='',operator_ready=False)
         dashboard=X2Dashboard(args)
         sent=[]
         class Input:

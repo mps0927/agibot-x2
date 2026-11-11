@@ -32,7 +32,7 @@ class Coverage(unittest.TestCase):
 class Routes(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         args=argparse.Namespace(offline=True,allow_control=True,allow_presets=True,allow_seat_hold=True,allow_posture_actions=True,
-            origin='',operator_ready=False,camera_port=18013,simulation=False)
+            origin='',operator_ready=False)
         app=create_app(args);self.d=app['dashboard'];self.client=TestClient(TestServer(app));await self.client.start_server()
         self.d.state.update(connected=True,arm_actions={'wave_right':1002,'wave_left':9999,'clap':True,'unknown':3024})
         self.d.state_at=time.monotonic()

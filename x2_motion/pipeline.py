@@ -62,7 +62,7 @@ def validate_result(raw, arm_actions=None, profile=None, custom_actions=None,con
             result.append(dict(type="stop", reason=reason))
             continue
         if kind == "arm_joint_pose":
-            # Joint values are a typed simulation action, never a free-form
+            # Joint values are a typed preview action, never a free-form
             # SDK payload.  Reject unknown, non-finite and out-of-range values
             # before the adapter or worker sees them.
             if "seconds" not in action:

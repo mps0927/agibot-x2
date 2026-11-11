@@ -7,9 +7,13 @@
 | Python 본체 중복 설치 | 없음 | 기존 Python 3.13.3으로 `.venv` 생성, `system_python_installed=false` |
 | 환경 재사용 | 통과 | 두 번째 `setup.sh`에서 `environment=reused`, pip 재실행 없음 |
 | Bash 진입점 | 통과 | Git Bash `bash -n`, `preflight.sh --offline --test` 실행 |
-| SDK·VLM·실행 제한·기록·프로세스 | 36개 테스트 통과 | `python -m unittest discover -s x2_motion` |
+| SDK·VLM·실행 제한·기록·프로세스 | 41개 테스트 통과 | `python -m unittest discover -s x2_motion` |
 | 단일 서버/포트 관리 | 통과 | 백그라운드 시작→동일 PID 재사용→옵션 충돌 거부→상태→종료 테스트 |
 | DGX Linux ARM64 의존성 | 통과 | CPython 3.12/aarch64용 모든 런타임 wheel 다운로드 확인 |
+| 단일 기기 → X2 직접 연결 | 통과 | 로컬 SSH/SFTP X2 fixture에서 워커 배포·상태·RGB·캡처 확인 |
+| 기기별 설정 분리 | 통과 | 다른 작업 폴더에서 명시한 설정만 읽고, 중첩된 구형 설정은 읽지 않음 |
+| 별도 카메라·LiDAR 서버 의존성 | 제거 | RGB는 SSH 워커에서 수신, 점군 수신 전에는 별도 서버에 연결하지 않음 |
+| 구형 실행 경로 | 제거 | G1 주소·Isaac 분기·구형 관절 실행 게이트 제거, 관절 미리보기 유지 |
 | 기존 X2 UI | 이식 | 준비 단계 상단 배치, 프리셋 상단, 지원 매핑만 표시, G1 공통 스타일 |
 | Linux/macOS 실행 | 4개 조합 통과 | GitHub Actions: Ubuntu/macOS × Python 3.10/3.12의 설치·재사용·구문·오프라인 테스트 |
 | DGX Spark 실제 연결 | 미실행 | 대상 기기에 배포하지 않음 |

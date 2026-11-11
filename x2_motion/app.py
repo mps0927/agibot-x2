@@ -19,7 +19,7 @@ from PIL import Image
 from dashboard_base import Dashboard, make_app
 from capabilities import DEFAULT_PROFILE, PRESETS, MODES, DIRECTIONS, preset_mapping
 from sdk_catalog import sdk_inventory
-from control_policy import permissions, command_allowed, preset_block_reason, seat_hold_check, SEAT_UNSUPPORTED, SEAT_MODE
+from control_policy import permissions, command_allowed, preset_block_reason, seat_hold_check, SEAT_MODE
 from worker_deploy import install_worker
 from pipeline import load_openrouter_config
 from posture_actions import posture_guide,validate_posture_request,POSTURES
@@ -160,7 +160,7 @@ class X2Dashboard(Dashboard):
 
     async def config(self,request):
         profile=self.state.get('profile',DEFAULT_PROFILE)
-        return web.json_response(dict(pipeline=self.pipeline.info(),mode='replay' if getattr(self.args,'replay',None) else 'offline' if self.args.offline else 'ssh-proxy',
+        return web.json_response(dict(pipeline=self.pipeline.info(),mode='replay' if getattr(self.args,'replay',None) else 'offline' if self.args.offline else 'ssh-direct',
             robot=os.environ.get('X2_SSH_HOST','10.0.1.41'),instance_id=getattr(self.args,'instance_id',''),translation_mps=profile['forward_mps'],yaw_rps=profile['yaw_rps'],
             max_burst_seconds=profile['burst_seconds'],operator_ready=False,read_only=self.args.read_only,
             joint_pose_enabled=False,robot_id='agibot_x2_ultra_t2d5',control_permissions=self.scopes,
@@ -282,7 +282,7 @@ class X2Dashboard(Dashboard):
             self.plans[data['plan_id']]['plan_status']='blocked'
         disallowed=[a for a in data['actions'] if not command_allowed({'move':'hold','gesture':'gesture','custom_motion':'custom_motion','stop':'stop'}.get(a['type'],'arm_joint_pose'),self.scopes)]
         if disallowed:
-            data.update(executable=False,execution_block_reason='현재 대시보드는 프리셋 실행만 허용합니다. 이동·직접 관절 제어는 잠겨 있습니다.')
+            data.update(executable=False,execution_block_reason='현재 실행 권한에서 지원하지 않는 동작입니다. 실행 설정과 동작 목록을 확인하세요.')
             self.plans[data['plan_id']]['plan_status']='blocked'
         if data.get('recording'):save_json(Path(data['recording']['directory'])/'result.json',data)
         return web.json_response(data)
@@ -339,7 +339,7 @@ def parse_args(argv=None):
     if args.offline or args.replay:
         args.offline=True;args.allow_control=False;args.allow_presets=False;args.allow_seat_hold=False;args.allow_posture_actions=False
     args.read_only=not(args.allow_control or args.allow_presets or args.allow_seat_hold or args.allow_posture_actions)
-    args.operator_ready=False;args.simulation=False;args.camera_port=18013
+    args.operator_ready=False
     return args
 
 if __name__=='__main__':

@@ -26,7 +26,7 @@ class RecordAndRoute(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.tmp=tempfile.TemporaryDirectory()
         args=argparse.Namespace(offline=True,read_only=False,allow_control=True,allow_presets=True,allow_seat_hold=True,allow_posture_actions=True,
-            origin='',operator_ready=False,camera_port=18013,simulation=False,vlm_record_root=Path(self.tmp.name))
+            origin='',operator_ready=False,vlm_record_root=Path(self.tmp.name))
         self.application=create_app(args);self.d=self.application['dashboard'];self.sent=[]
         async def send(msg):self.sent.append(msg)
         self.d.send=send
@@ -74,7 +74,7 @@ class ReplayMode(unittest.IsolatedAsyncioTestCase):
             (root/'state.json').write_text(json.dumps(dict(fsm='STAND_DEFAULT',ready=True,connected=True,events=[],pipeline_status={},arm_actions={'wave_right':1002})),encoding='utf-8')
             (root/'frame.json').write_text(json.dumps(dict(captured_at=1.,sensor_frame=7)),encoding='utf-8')
             args=argparse.Namespace(offline=False,read_only=False,allow_control=True,allow_presets=True,allow_posture_actions=True,allow_seat_hold=True,
-                replay=str(root),origin='',operator_ready=False,camera_port=18013,simulation=False)
+                replay=str(root),origin='',operator_ready=False)
             application=create_app(args);d=application['dashboard']
             async def forbidden():raise AssertionError('Replay attempted SSH')
             d.connect_worker=forbidden

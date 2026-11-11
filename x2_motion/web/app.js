@@ -33,7 +33,7 @@ function startHold(direction) {
 function stop() { instructionEpoch++;endHold();send({action:'stop'}); }
 function update() {
   const connected=state.connected && socket?.readyState===WebSocket.OPEN;
-  $('connection').textContent=config.mode==='replay'?'저장 사진 · 실물 미연결':config.read_only?(connected?'● X2 연결 · 읽기 전용':'X2 연결 확인 중 · 읽기 전용'):config.mode==='simulation'&&connected?'● Isaac 시뮬레이션':connected?(state.fsm===null?'SSH 연결 · 운동 RPC 응답 대기':'● AGIBOT X2 연결됨'):'AGIBOT X2 연결 확인 중';
+  $('connection').textContent=config.mode==='replay'?'저장 사진 · 실물 미연결':config.read_only?(connected?'● X2 연결 · 읽기 전용':'X2 연결 확인 중 · 읽기 전용'):connected?(state.fsm===null?'SSH 연결 · 운동 RPC 응답 대기':'● AGIBOT X2 연결됨'):'AGIBOT X2 연결 확인 중';
   $('connection').className='badge '+(connected?'ok':'bad');
   $('fsm').textContent=(state.recorded_state?'기록 · ':'')+(modeLabels[state.fsm]||state.fsm||'—');$('fsm').title=state.fsm||'모드 응답 대기';
   const ours=state.armed && state.controller==='you';
@@ -43,7 +43,7 @@ function update() {
   document.querySelectorAll('.dir').forEach(x=>x.disabled=!config.control_permissions?.movement||!ours||!!state.gesture||state.execution_source==='plan');
   $('execute-instruction').disabled=!connected || !state.ready || !canExecute() || state.controller==='other' || inFlight;
   $('infer').disabled=inFlight;
-  const profile=state.profile||{forward_mps:.2,lateral_mps:.2,yaw_rps:.2,burst_seconds:0};
+  const profile=state.profile||{forward_mps:.1,lateral_mps:.1,yaw_rps:.1,burst_seconds:1};
   $('limit-forward').textContent=profile.forward_mps.toFixed(2)+' m/s';$('limit-lateral').textContent=profile.lateral_mps.toFixed(2)+' m/s';$('limit-yaw').textContent=profile.yaw_rps.toFixed(2)+' rad/s';$('limit-burst').textContent=profile.burst_seconds?profile.burst_seconds.toFixed(1)+'초':'시간 상한 없음';
   if(!profileDirty)document.querySelectorAll('[data-setting]').forEach(x=>x.value=profile[x.dataset.setting]);
   $('apply-settings').disabled=!connected||state.controller==='other'||state.moving||!!state.gesture;
@@ -62,14 +62,9 @@ function update() {
     $('pipeline-progress').dataset.stage=progress.stage;
   }
   document.querySelectorAll('.execute-step').forEach(x=>x.disabled=!connected||!state.ready||!canExecute()||state.controller==='other'||!result?.executable);
-  const physicalGroups=new Set(jointCatalog?.physical_groups||[]);
-  const physicalJointPose = !!jointPreview && Object.keys(jointPreview.action?.joints||{})
-    .every(name => physicalGroups.has(jointCatalog?.joints?.[name]?.group));
-  const jointReady=!!jointPreview&&connected&&state.ready&&canExecute()&&state.controller!=='other'
-    &&!state.joint_pending&&(config.mode==='simulation'||(physicalJointPose&&config.joint_pose_enabled&&$('joint-support-confirmed').checked));
   $('joint-preview').disabled=!jointCatalog;
-  $('joint-execute').disabled=!jointReady;
-  $('joint-execute').title = !config.joint_pose_enabled ? '직접 관절 실행기를 아직 구현·검증하지 않아 미리보기만 제공합니다.' : !$('joint-support-confirmed').checked ? '실물 지지·정지 조건을 확인하세요.' : physicalJointPose ? '' : '실물 어댑터 계약에 없는 관절입니다.';
+  $('joint-execute').disabled=true;
+  $('joint-execute').title='X2 관절 목표는 미리보기만 제공합니다.';
   $('joint-receipt').textContent=jointPreview?JSON.stringify(jointPreview,null,2):'슬라이더 값을 미리보기하세요.';
   if(!ours && activeDirection) endHold();
   const events=(state.events||[]).slice(-8).reverse();
@@ -97,9 +92,9 @@ document.querySelectorAll('.dir').forEach(button=>{
 });
 async function ensureControl(){
   if(state.armed&&state.controller==='you')return;
-  if(!canExecute()||!state.connected||!state.ready)throw Error('시뮬레이션 또는 현장 확인과 운동제어 연결을 확인하세요.');
+  if(!canExecute()||!state.connected||!state.ready)throw Error('현장 확인과 X2 운동제어 연결을 확인하세요.');
   if(state.controller==='other')throw Error('다른 창에서 제어 중입니다.');
-  if(!send({action:'arm',confirmed:true}))throw Error('AGIBOT X2 프록시 연결을 확인하세요.');
+  if(!send({action:'arm',confirmed:true}))throw Error('AGIBOT X2 연결을 확인하세요.');
   const deadline=Date.now()+4000;
   while(!(state.armed&&state.controller==='you')){
     if(Date.now()>deadline||socket?.readyState!==WebSocket.OPEN)throw Error('AGIBOT X2 제어 활성화 응답을 받지 못했습니다.');
@@ -134,7 +129,7 @@ $('image').onchange=async()=>{if(!$('image').files[0])return;try{const form=new 
 async function submitInstruction(execute=false){
   if(inFlight)return;
   if(!$('instruction').value.trim()){notify('텍스트 지시를 입력하세요.');$('instruction').focus();return;}
-  if(execute&&(!canExecute()||!state.connected||!state.ready)){notify('시뮬레이션 또는 현장 확인과 AGIBOT X2 운동제어 연결을 확인하세요.');return;}
+  if(execute&&(!canExecute()||!state.connected||!state.ready)){notify('현장 확인과 X2 운동제어 연결을 확인하세요.');return;}
   if(execute&&state.controller==='other'){notify('다른 대시보드 창에서 제어 중입니다.');return;}
   const myEpoch=++instructionEpoch;
   inFlight=true;update();$('infer').textContent='장면과 지시 처리 중…';
@@ -151,7 +146,7 @@ async function submitInstruction(execute=false){
     if(!result.actions.length){const el=document.createElement('p');el.className='no-action';el.textContent='이동 명령 미전송: VLM이 동작을 제안하지 않았습니다. 위 판단 이유와 실제 주변 환경을 확인하세요.';$('actions').append(el);}
     result.actions.forEach((action,index)=>{
       const row=document.createElement('div');row.className='action-row';const text=document.createElement('div');const name=document.createElement('b');name.textContent=`${index+1}. ${action.type==='gesture'?(gestures[action.name]||action.name):action.type==='custom_motion'?action.name:action.type==='mode'?(manualModes[action.name]?.label||action.name):action.type==='stop'?'정지':(names[action.direction]||'이동')}${action.type==='move'?' · ['+action.velocity.join(', ')+'] m/s, m/s, rad/s':''}${['gesture','custom_motion'].includes(action.type)?' · 실제 종료 후 현장 확인':action.seconds?' · '+action.seconds+'초':''}`;const reason=document.createElement('small');reason.textContent=action.reason;text.append(name,reason);
-      const button=document.createElement('button');button.className='execute-step';button.textContent='이 단계 실행';button.onclick=()=>{endHold();if(send({action:'plan_step',plan_id:result.plan_id,index,confirmed:$('physical').checked,support_confirmed:$('joint-support-confirmed').checked})){}else notify('프록시 연결이 끊겨 전송하지 못했습니다.');};row.append(text,button);$('actions').append(row);
+      const button=document.createElement('button');button.className='execute-step';button.textContent='이 단계 실행';button.onclick=()=>{endHold();if(send({action:'plan_step',plan_id:result.plan_id,index,confirmed:$('physical').checked,support_confirmed:$('joint-support-confirmed').checked})){}else notify('대시보드 연결이 끊겨 전송하지 못했습니다.');};row.append(text,button);$('actions').append(row);
     });update();
     if(execute&&result.actions.length){
       if(myEpoch!==instructionEpoch){notify('지시가 취소됐습니다. VLM 계획만 표시하며 실행하지 않습니다.');return;}
@@ -159,7 +154,7 @@ async function submitInstruction(execute=false){
         endHold();
         if(send({action:'plan_execute',plan_id:result.plan_id,confirmed:$('physical').checked,support_confirmed:$('joint-support-confirmed').checked})){
           notify('전체 계획을 순서대로 실행 요청했습니다.');
-        }else notify('프록시 연결이 끊겨 전송하지 못했습니다.');
+        }else notify('대시보드 연결이 끊겨 전송하지 못했습니다.');
       }else notify(!result.executable?'계획 실행 보류: '+(result.execution_block_reason||result.execution_info||'실행기 상태를 확인하세요.'):'AGIBOT X2 상태를 확인하세요.');
     }
   }catch(e){result=null;notify(e.message);$('result').hidden=false;setVerdict('error',e.message);$('scene').textContent=e.message;$('explanation').textContent=e.errorType==='plan_validation'?'VLM은 응답했습니다. 마지막 모델 요청의 model_response와 validation_error에서 계획 변환 원인을 확인할 수 있습니다. AGIBOT X2에는 동작을 전송하지 않았습니다.':'요청 오류 내용을 확인하세요. 마지막 모델 요청에서 응답 유무를 확인할 수 있습니다.';$('result-meta').textContent=e.errorType==='plan_validation'?'계획 변환 오류':'요청 실패';$('actions').replaceChildren();$('plan-json').textContent='';}finally{inFlight=false;$('infer').textContent='계획만 보기';update();}
@@ -224,9 +219,27 @@ function readJointPose(){
 async function previewJoints(){try{jointPreview=await api('/api/joints/preview',readJointPose());notify(`typed target 검증 완료 · ${jointPreview.target_sha256.slice(0,12)}…`);update();}catch(e){jointPreview=null;notify(e.message);update();}}
 $('joint-preview').onclick=previewJoints;
 $('joint-support-confirmed').onchange=update;
-$('joint-execute').onclick=async()=>{if(!jointPreview){await previewJoints();if(!jointPreview)return;}if(send({action:'joint_execute',target:jointPreview.action,target_sha256:jointPreview.target_sha256,confirmed:canExecute(),support_confirmed:$('joint-support-confirmed').checked,source_frame:frame?.frame_id||null}))notify('26관절 typed pose를 실행 요청했습니다.');};
+$('joint-execute').onclick=()=>notify('X2 관절 목표는 미리보기만 제공합니다.');
 async function loadCapabilities(){try{const r=await fetch('/api/capabilities'),v=await r.json();$('command-catalog').textContent=JSON.stringify(v.planner_capabilities||v.catalog,null,2);$('system-prompt').textContent=v.system_prompt;manualModes=v.catalog.manual_modes||{};Object.assign(gestures,Object.fromEntries(Object.entries(v.catalog.gestures||{}).map(([k,x])=>[k,x.label||k])));jointCatalog=v.joint_contract||v.catalog.joint_pose;renderJointControls();if(!$('mode-select').options.length)for(const [name,spec]of Object.entries(manualModes)){const option=document.createElement('option');option.value=name;option.textContent=spec.label;$('mode-select').append(option);}updateMode();}catch{}setTimeout(loadCapabilities,10000);}
-async function loadConfig(){try{const response=await fetch('/api/config'),value=await response.json();config=value;$('physical').disabled=!!value.read_only||value.mode==='simulation';if(value.operator_ready||value.mode==='simulation')$('physical').checked=true;if(value.read_only)$('physical').checked=false;if(value.mode==='offline'||value.mode==='simulation'){$('camera').hidden=true;$('camera').onerror=null;$('camera').removeAttribute('src');$('camera').parentElement.dataset.offline='true';$('view-label').textContent=value.mode==='simulation'?'ISAAC SIM · AGIBOT X2 HEAD RGB':'OFFLINE · 로컬 분석';}else{$('camera').src='/camera/stream/head_color';if(value.mode==='replay'){$('view-label').textContent='RECORDED · 실물 미연결';$('capture').textContent='저장 프레임 선택';}}$('model').value=value.pipeline.model;$('model').disabled=value.pipeline.provider!=='OpenRouter';$('pipeline-status').textContent=value.mode==='simulation'?'Isaac receipt 시뮬레이션':value.pipeline.configured?`${value.pipeline.provider} 준비됨`:'키 설정 필요';$('pipeline-status').className='badge '+(value.pipeline.configured||value.mode==='simulation'?'ok':'bad');update();}catch(e){notify(e.message);}}
+async function loadConfig(){
+  try{
+    const response=await fetch('/api/config'),value=await response.json();config=value;
+    $('physical').disabled=!!value.read_only;
+    if(value.operator_ready)$('physical').checked=true;
+    if(value.read_only)$('physical').checked=false;
+    if(value.mode==='offline'){
+      $('camera').hidden=true;$('camera').onerror=null;$('camera').removeAttribute('src');
+      $('camera').parentElement.dataset.offline='true';$('view-label').textContent='OFFLINE · 로컬 분석';
+    }else{
+      $('camera').hidden=false;delete $('camera').parentElement.dataset.offline;
+      $('camera').src='/camera/stream/head_color';
+      if(value.mode==='replay'){$('view-label').textContent='RECORDED · 실물 미연결';$('capture').textContent='저장 프레임 선택';}
+    }
+    $('model').value=value.pipeline.model;$('model').disabled=value.pipeline.provider!=='OpenRouter';
+    $('pipeline-status').textContent=value.pipeline.configured?`${value.pipeline.provider} 준비됨`:'키 설정 필요';
+    $('pipeline-status').className='badge '+(value.pipeline.configured?'ok':'bad');update();
+  }catch(e){notify(e.message);}
+}
 loadConfig();
 loadCapabilities();
 function renderMotions(){
