@@ -1,6 +1,7 @@
 """Prepare mounted settings, then run the dashboard as an unprivileged user."""
 import asyncio
 import os
+import pwd
 from pathlib import Path
 import shutil
 import sys
@@ -21,6 +22,8 @@ def prepare():
     data=Path('/data');data.mkdir(exist_ok=True)
     for path in (data,data/'ssh',data/'artifacts'):
         path.mkdir(exist_ok=True);os.chown(path,uid,gid)
+    account=pwd.getpwuid(uid)
+    os.environ.update(HOME=account.pw_dir,USER=account.pw_name,LOGNAME=account.pw_name)
     os.setgroups([]);os.setgid(gid);os.setuid(uid)
 
 async def trust_host():
