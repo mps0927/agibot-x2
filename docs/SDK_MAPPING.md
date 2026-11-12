@@ -11,6 +11,7 @@
 | 이동·회전 | `/aima/mc/locomotion/velocity` (`McLocomotionVelocity`) |
 | 손·시스템·음량 조회 | `GetHandType`, `GetSystemState`, `GetVolume`, `GetMute` |
 | 카메라 | `/aima/hal/sensor/rgb_head_front_center/rgb_image/compressed` |
+| 라이다 점군 | `/aima/hal/sensor/lidar_chest_front/lidar_pointcloud` (`sensor_msgs/msg/PointCloud2`) |
 | 배터리·IMU | `/aima/hal/pmu/state`, `/aima/hal/imu/torso/state` |
 
 `/api/action-map`은 실제 연결 상태의 동작 매핑, `/api/sdk-map`은 전체 서비스 스키마 27개와 토픽 이름 35개 및 연결 범위를 반환한다. 서비스 12개는 실행/조회 처리기에 연결했고 음성·표정·지도·시스템 관리 등 나머지는 스키마와 미연결 이유를 표시한다.
@@ -30,3 +31,5 @@
 이동은 `/aima/mc/locomotion/velocity`에 50 Hz로 발행한다. 기본 전후 속도는 설치 SDK의 `mc_locomotion_velocity.cpp` 예제를 따라 0.20 m/s로 설정한다. 명시적으로 요청한 속도는 유지한다. 제조사 안내에 따르면 기동 임계값은 펌웨어와 모델에 따라 달라진다. [이동 제어 문서](https://x2-aimdk.agibot.com/en/latest/Interface/control_mod/locomotion.html)를 참고한다.
 
 안정 서기에서 시작한 속도 명령은 자동 보행 전환(`LOCOMOTION_DEFAULT`, 상태 200) 중에도 최대 2초 이내에서 이어 보낸다. 새 이동과 제어 활성화는 상태 100에서 시작한다. 기존 누름 시간 상한, 300ms 입력 만료, 최신 모드 확인과 정지 처리는 계속 적용한다.
+
+라이다는 개발 보드의 PointCloud2를 구독하고 기존 SSH 연결로 대시보드에 전달한다. `/api/lidar/status`에서 연결·토픽·발행자·수신 상태를 조회하고, `/api/lidar/frame`에서 최대 3,000점의 최신 표본을 받는다. `/api/lidar/topic`은 기본 토픽 또는 로봇에서 조회된 LiDAR 토픽으로 구독을 바꾼다. VLM 요청에 포함한 점군 요약과 표본은 해당 요청 폴더에 함께 저장한다. 센서 좌표의 표본이며 RGB와 시간 동기화하거나 로봇 기준 좌표로 변환하지 않는다.

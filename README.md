@@ -1,167 +1,116 @@
 # AGIBOT X2 Multimodal Pipeline
 
-브라우저에서 X2 Ultra t2d5의 카메라와 상태를 확인하고, 일어서기·앉기·손 흔들기·이동을 조작하는 프로젝트다. 사진과 글로 쓴 지시를 AI에 보내 동작을 요청할 수도 있다. [Unitree G1 파이프라인](https://github.com/8l4nnk/unitree-g1-pipeline)과 같은 실행 스크립트 구조와 조작 화면을 사용한다.
+X2 Ultra t2d5의 영상·배터리·관절·라이다를 확인하고, 일어서기·앉기·프리셋·이동을 조작하는 웹 대시보드입니다. OpenRouter의 이미지 지원 모델을 선택해 사진과 글로 로봇 동작을 요청할 수 있습니다. [Unitree G1 파이프라인](https://github.com/8l4nnk/unitree-g1-pipeline)과 조작 화면 구성을 맞췄습니다.
+
+Windows PC, DGX Spark, Mac에서 **각 기기 자체로 Docker를 실행**하고 같은 기기의 브라우저로 사용합니다. 로봇을 사용할 때는 해당 기기에 X2를 LAN으로 직접 연결합니다. **대시보드 포트는 8766 하나**이며 G1의 기본 포트 8765와 함께 사용할 수 있습니다.
 
 ## 사용설명서
 
-- **[대시보드로 A to Z](docs/USER_GUIDE_KO.md)** — 전원 켜기 → PC 연결 → 화면에서 착석 고정·일어서기·제어 활성화 → 프리셋·이동·VLM → 화면에서 앉기·댐핑·영토크 → 전원 끄기·충전.
-- **[리모컨으로 A to Z](docs/REMOTE_CONTROL_GUIDE_KO.md)** — 전원 켜기 → 리모컨 연결 → 버튼 조합으로 착석 고정·일어서기 → 조이스틱·팔 동작 → 앉기·댐핑·영토크 → 전원 끄기·충전.
+- **[대시보드로 A to Z](docs/USER_GUIDE_KO.md)** — Docker 설치·실행, 전원 켜기, LAN 연결, 화면에서 착석 고정·기립·조종·종료·충전까지.
+- **[리모컨으로 A to Z](docs/REMOTE_CONTROL_GUIDE_KO.md)** — 리모컨 연결과 버튼 조합으로 준비·조종·종료하기.
+- **[현장 사용 순서](docs/OPERATIONS.md)** — 설치를 마친 뒤 매일 사용할 순서.
 
-**대시보드 포트는 8766 하나다.** G1의 기본 포트 8765와 겹치지 않는다. Docker는 로봇 연결 여부와 관계없이 같은 명령으로 실행한다.
+## Docker로 실행
 
-## 실행 구성
+Git과 Docker Compose를 준비합니다. Windows와 Mac에서는 Docker Desktop을 실행하고, Linux·DGX Spark에서는 Docker Engine과 Compose 플러그인을 준비합니다. Docker 이미지 안에 Python과 필요한 패키지가 함께 설치됩니다.
 
-로봇을 사용할 PC에 프로젝트를 설치하고 X2를 LAN 케이블로 직접 연결한다. 대시보드 실행과 브라우저 조작은 모두 이 PC에서 진행한다.
-
-Windows, Linux(DGX Spark 포함), macOS에서 **같은 스크립트 `./start_field.sh`**를 사용한다. 명령을 입력할 프로그램은 다음과 같다.
-
-| 운영체제 | 명령을 입력할 프로그램 |
-|---|---|
-| Windows | Git Bash |
-| Linux · DGX Spark | 터미널 |
-| macOS | 터미널 |
-
-프로젝트의 Python 실행 환경(`.venv`), 연결 설정(`.env`), 로봇 접속 정보와 기록은 실행한 PC에 저장한다. AI 요청도 이 PC에서 OpenRouter로 보낸다.
-
-## 빠른 시작
-
-### Docker로 실행
-
-각 Windows PC, DGX Spark, Mac에서 Docker를 설치하고, 로봇을 사용할 기기에 이 저장소를 내려받는다. Windows와 Mac에서는 Docker Desktop을 먼저 실행한다.
+Windows에서는 PowerShell, Linux·macOS에서는 터미널에서 다음 명령을 실행합니다. 이미 내려받은 저장소가 있으면 해당 폴더에서 시작합니다.
 
 ```bash
 git clone https://github.com/mps0927/agibot-x2.git
 cd agibot-x2
+```
+
+처음 설치하여 `.env`가 없을 때만 설정 예시를 복사합니다.
+
+```bash
 cp .env.example .env
 ```
 
-기존 `.env`가 있으면 그대로 사용한다. VLM 분석을 사용할 때는 OpenRouter 키를 입력한다. 먼저 이미지를 만든다.
+`.env`를 텍스트 편집기로 열어 사용할 기능의 접속 정보를 입력합니다. Windows에서는 `notepad .env`로 열 수 있습니다.
 
-```bash
-docker compose build
+```dotenv
+X2_SSH_HOST=10.0.1.41
+X2_SSH_USER=agi
+X2_SSH_PASSWORD=로봇의_SSH_비밀번호
+OPENROUTER_API_KEY=발급받은_OpenRouter_키
 ```
 
+화면만 확인할 때는 비밀번호와 API 키를 비워 둘 수 있습니다. 이미지로 VLM 분석을 할 때는 OpenRouter 키를, 로봇을 연결할 때는 SSH 접속 정보를 입력합니다. 기존 `.env`가 있으면 필요한 항목을 수정해 사용합니다.
+
 ```bash
-docker compose up -d
+docker compose up
 ```
 
-같은 PC의 [대시보드](http://127.0.0.1:8766)를 연다. 로봇이 없어도 화면·이미지 업로드·VLM 분석을 사용할 수 있다. 로봇 연결은 백그라운드에서 기다리며, 연결되면 카메라·상태·라이다 수신을 자동으로 시작한다. 로봇이 연결되기 전에는 실물 제어 버튼이 비활성화된다.
+첫 실행에는 이미지와 필요한 패키지를 준비하므로 시간이 걸립니다. 서버가 시작되면 같은 기기의 브라우저에서 **[대시보드 열기](http://127.0.0.1:8766)**를 누릅니다. 이 명령은 실행 로그를 계속 표시합니다. 터미널을 닫아도 유지하려면 `docker compose up -d`를 사용합니다.
 
-로봇을 처음 연결할 때는 `.env`에 SSH 접속 정보를 준비하고 LAN을 연결한다. 로봇의 SSH 호스트 키 지문을 확인해 등록하면 실행 중인 대시보드가 다음 재시도에서 자동으로 접속한다.
+로봇이 없어도 대시보드가 열리며, 이미지를 업로드해 **계획만 보기**로 VLM을 테스트할 수 있습니다. 로봇 접속은 백그라운드에서 계속 시도합니다. 로봇이 연결되면 영상·상태 수신과 라이다 구독을 시작하고, 연결이 끊기면 자동으로 재연결합니다. 실제 조종은 화면에서 제어 준비를 마친 뒤 시작합니다.
+
+### 로봇을 처음 연결할 때
+
+1. [전원 켜기](docs/USER_GUIDE_KO.md#power-on)에 따라 부팅합니다.
+2. PC와 X2를 LAN으로 연결하고 [PC 유선 IP](docs/USER_GUIDE_KO.md#network-ip)를 설정합니다.
+3. `.env`의 SSH 접속 정보를 입력합니다. 실행 중 설정을 바꿨다면 다음 명령으로 적용합니다.
+
+```bash
+docker compose up -d --force-recreate
+```
+
+4. 별도 터미널을 같은 저장소 폴더에서 열고, 로봇의 접속 키를 등록합니다. 표시된 지문을 장비 담당자가 제공한 지문과 대조한 뒤 `yes`를 입력합니다.
 
 ```bash
 docker compose run --rm x2 trust-host
 docker compose run --rm x2 doctor
 ```
 
-다음부터는 `docker compose up -d`로 시작한다. 대시보드 연결이 끊겨도 다시 연결을 시도한다. 실제 동작은 화면의 로봇 제어 준비 절차를 거쳐 요청한다.
+키는 Docker 데이터 볼륨에 저장됩니다. 같은 PC·같은 로봇을 다시 사용할 때는 등록을 반복할 필요가 없습니다. 개인 키 인증을 사용하는 경우 [개인 키 연결 방법](docs/USER_GUIDE_KO.md#ssh-key)을 따릅니다.
+
+5. 화면의 연결 표시와 RGB 영상을 확인하고 **착석 자세 고정 → 일어서기 → 제어 활성화** 순서로 진행합니다. 다음 사용부터는 `docker compose up`으로 실행하고 전원·LAN을 연결하면 자동으로 접속합니다.
+
+### 상태 확인·종료·업데이트
+
+| 할 일 | 명령 |
+|---|---|
+| 백그라운드 실행 | `docker compose up -d` |
+| 대시보드 실행 상태 확인 | `docker compose ps` |
+| 최근 로그 확인 | `docker compose logs --tail 100 x2` |
+| 로봇 연결·SDK·라이다 토픽 진단 | `docker compose run --rm x2 doctor` |
+| `.env` 변경 적용 | `docker compose up -d --force-recreate` |
+| 대시보드 종료 | `docker compose down` |
+
+로봇을 사용했다면 [의자에 앉히고 힘 해제하기](docs/USER_GUIDE_KO.md#power-off)를 마친 뒤 대시보드를 종료합니다. `docker compose up`으로 실행한 터미널에서는 `Ctrl+C`로도 대시보드를 중지할 수 있습니다.
+
+소스를 업데이트할 때는 조작을 마치고 실행합니다.
 
 ```bash
-docker compose ps
-docker compose logs --tail 100 x2
 docker compose down
+git pull --ff-only
+docker compose up -d --build
 ```
 
-종료해도 Docker 볼륨에 촬영 자료와 VLM 기록이 남는다. 설정을 변경한 경우 `docker compose up -d --force-recreate`로 다시 실행한다. 개인 키로 접속할 때는 `X2_HOST_SSH_KEY`에 호스트 키 파일 경로를 지정하고 모든 Compose 명령에 `-f compose.yaml -f compose.ssh-key.yaml`을 추가한다.
+`.env`와 Docker 볼륨의 기록은 유지됩니다. 촬영 사진과 VLM 기록은 컨테이너의 `/data/artifacts/`에 저장되며, PC 폴더로 복사하는 방법은 [요청 사진과 응답 확인](docs/USER_GUIDE_KO.md#records)을 참고합니다.
 
-### Python 스크립트로 실행
+## 주요 기능
 
-처음 사용하는 경우 [대시보드 사용설명서](docs/USER_GUIDE_KO.md)의 전원 켜기와 LAN 연결부터 진행한다. 아래 명령은 로봇을 사용할 PC에서 실행한다.
+- **로봇 제어 준비:** 착석 자세 고정, 의자에서 일어서기, 의자에 앉기, 댐핑·영토크 전환.
+- **직접 조종:** 설치 SDK에서 매핑된 프리셋, 이동·회전 버튼과 WASD·Q/E, 이동 정지·제어 해제.
+- **로봇 상태:** 상단 배터리 잔량, 관절 각도 슬라이더, 현재 운용 모드.
+- **센서:** RGB 미리보기 30fps 설정, LiDAR 점군의 XY 화면·수신 상태·토픽 선택. 실제 수신 속도는 장비와 연결 상태에 따라 달라집니다.
+- **VLM:** OpenRouter 이미지 지원 모델 검색·선택, 사진과 텍스트 지시, 점군 요약 첨부, 요청별 사진·응답·실행 기록 저장.
 
-Python 3.10 이상과 Git, Bash가 필요하다. Windows에서는 Git Bash를 연다. 기존 Python으로 프로젝트 전용 `.venv`를 만들고, 이후에는 같은 환경과 패키지를 재사용한다. 명령은 한 줄씩 복사해 붙여 넣고 Enter를 누른다.
-
-처음 설치할 때 프로젝트를 내려받는다. 이미 `agibot-x2` 폴더가 있으면 그 폴더에서 터미널을 열어 연결 설정을 확인한다.
-
-```bash
-git clone https://github.com/mps0927/agibot-x2.git
-cd agibot-x2
-cp .env.example .env
-./setup.sh
-```
-
-`.env`는 연결 설정 파일이다. 텍스트 편집기로 열고 아래 비밀번호와 키 안내를 실제 값으로 바꿔 저장한다. Windows에서는 Git Bash에서 `notepad .env`로 열 수 있다. 수동 조종만 사용할 때 OpenRouter 키는 비워 둔다. 항목별 설명은 [설치와 실행](docs/USER_GUIDE_KO.md#dashboard)을 참고한다.
-
-```dotenv
-X2_SSH_HOST=10.0.1.41
-X2_SSH_USER=agi
-X2_SSH_PASSWORD=로봇의_SSH_비밀번호
-X2_SSH_KNOWN_HOSTS=~/.ssh/known_hosts
-OPENROUTER_API_KEY=발급받은_키
-```
-
-개발 PC와 X2 개발 보드가 같은 LAN에 있어야 한다. 기본 X2 주소는 `10.0.1.41/24`이며 PC에는 사용 중이지 않은 같은 대역 주소를 설정한다. 처음 연결할 PC에서는 다음 명령으로 로봇의 호스트 키를 확인하고 등록한다.
-
-```bash
-ssh agi@10.0.1.41
-```
-
-로봇에 접속되면 `exit`를 입력해 PC 터미널로 돌아온다. 이어서 PC의 `agibot-x2` 폴더에서 실행한다.
-
-```bash
-exit
-./start_field.sh
-./status.sh
-```
-
-대시보드를 실행한 **같은 PC의 브라우저**에서 [대시보드 열기](http://127.0.0.1:8766)를 누른다. 주소창에 `http://127.0.0.1:8766`을 입력해도 된다. `start_field.sh`로 시작하면 터미널을 닫아도 실행이 유지된다. 다음 날에도 프로젝트 폴더에서 같은 명령을 사용한다.
-
-화면 상단의 **착석 자세 고정 → 일어서기 → 제어 활성화** 순서로 준비한다. 직접 조종 영역에서 프리셋 버튼이나 WASD·Q/E를 사용한다. 프리셋은 SDK 응답을 받으면 다음 요청을 할 수 있다. 실제 동작이 끝나는 것을 보고 다음 프리셋을 선택한다.
-
-종료할 때는 [의자에 앉히고 전원 끄기](docs/USER_GUIDE_KO.md#power-off) 순서로 로봇을 앉히고 힘을 해제한 뒤 `./stop.sh`를 실행한다. 프로그램 오류는 [자주 발생하는 문제](docs/USER_GUIDE_KO.md#troubleshooting)를 참고한다.
-
-## 실행 방식
-
-| 목적 | 명령 | 하드웨어 연결 | 기본 주소 |
-|---|---|---|---|
-| 실물 조종 전체 | `./start_field.sh` | X2 SDK, 카메라, 수동 기립·착석, 이동·프리셋 | `http://127.0.0.1:8766` |
-| 실물 상태 조회 | `./run.sh --field` | SSH·센서 조회, 제어 읽기 전용 | 동일 |
-| 로봇 없이 개발 | `./run.sh --offline` | 없음, 이미지 업로드·VLM·화면 확인 | 동일 |
-| 실행 전 확인 | `./preflight.sh --field` | SDK 설치 상태만 조회 | 서버 시작 없음 |
-| 로봇 없이 검사 | `./preflight.sh --offline --test` | 없음 | 서버 시작 없음 |
-| 상태·종료 | `./status.sh` / `./stop.sh` | 로컬 서버 관리 | 추가 포트 없음 |
-
-최초 환경 준비는 `run.sh`에서도 자동 수행한다. 특정 Python을 사용하려면 최초 실행 전에 `PYTHON_BIN=/path/to/python3 ./setup.sh`를 사용한다. `.venv`는 실행할 PC에서 `./setup.sh`로 준비한다. 이미 환경변수로 지정한 설정값은 `.env`보다 우선하며 `.env`는 Git에서 제외된다.
-
-다른 `.env` 경로는 `./start_field.sh --env-file /path/to/.env`로 지정한다. OpenRouter 키가 없어도 실제 영상·상태·수동 제어는 사용할 수 있다. 오프라인 모드에서는 업로드 이미지로 VLM을 확인할 수 있다. 이전 캡처 자료가 있다면 `./run.sh --offline --replay /path/to/robot_snapshot`으로 불러올 수 있다. 개인 사진·기기 로그는 저장소에 포함하지 않는다.
-
-## 구조와 통신
+## 프로젝트 구성
 
 ```text
 agibot-x2/
-├── run.sh / start_field.sh / setup.sh / preflight.sh
-├── status.sh / stop.sh
-├── .env.example / FILE_SHA256SUMS.txt / VERIFICATION.md
-├── x2_motion/
-│   ├── dashboard.py / app.py / dashboard_service.py
-│   ├── x2_worker.py / worker_deploy.py / preflight.py
-│   ├── capabilities.py / control_policy.py / posture_actions.py
-│   ├── pipeline.py / vlm_recording.py / sdk_interfaces.json
-│   ├── web/ / prompts/ / test_*.py
-├── sdk_reference/
-└── docs/
+├── Dockerfile / compose.yaml / compose.ssh-key.yaml
+├── docker/                 # 실행 준비, 접속 키 등록, 연결 진단
+├── .env.example
+├── x2_motion/              # 대시보드 서버, 로봇 워커, VLM, 센서, 웹 화면
+├── sdk_reference/          # 설치 SDK의 상수·서비스 참조
+├── docs/                   # 사용설명서와 개발 안내
+└── .github/workflows/      # Python 검사와 AMD64·ARM64 Docker 빌드
 ```
 
-대시보드가 실행되는 PC에서 AsyncSSH로 X2 개발 보드에 직접 접속한다. 로봇에 이미 설치된 ROS 2 Humble과 AIMDK를 사용해 전용 워커를 실행한다. 워커 파일은 `/home/agi/agibot_dashboard`에 동기화한다. PC에는 대시보드 패키지를 설치하고, 로봇의 SDK·ROS·펌웨어는 기존 설치본을 사용한다. 로봇 통신은 SSH 포트 22, 웹 대시보드는 8766을 사용한다.
+컨테이너에서 X2 개발 보드 `10.0.1.41`에 SSH로 접속합니다. 로봇에 설치된 ROS 2 Humble과 AIMDK를 사용하며, 대시보드 워커는 `/home/agi/agibot_dashboard`에 배치합니다. 웹 화면·RGB·점군은 같은 대시보드에서 제공합니다.
 
-운동 보드 `10.0.1.40`을 직접 조종하거나 MC 앱을 중지하는 실행기는 포함하지 않는다. 기본 개발 보드 `10.0.1.41`의 공식 ROS SDK 서비스를 호출한다. 설치 SDK 관측 버전은 `aimdk v1.0.0-ga424add`이며 연결 시 해당 기기의 상수·서비스 준비 상태를 다시 조회한다.
-
-## 제어와 VLM
-
-- 프리셋은 문서 ID·제어 영역과 설치 SDK 상수가 정확히 맞는 항목만 UI/VLM에 제공한다. 기준 설치본에서 17개가 매핑되며 재생 성공을 확인한 목록과는 구분한다.
-- `↑+×`는 `SIT_JOINT_DEFAULT`, 의자 기립 `↑+□`는 `SIT_UP_DEFAULT`, 의자 착석 `L2+←`는 `SIT_DOWN_DEFAULT`로 매핑한다.
-- 이동은 6방향 속도 명령이며 각 축 절댓값 0.30 이하, 기본 전후 속도는 0.20 m/s, 수동 누름 기본 1초·최대 5초다. 정확한 보 수·거리 제어는 제공하지 않는다.
-- 매 VLM 요청의 입력 사진·지시·요청·응답·실행 피드백은 로컬 `x2_motion/artifacts/vlm_runs/`에 저장한다. API 키는 기록하지 않는다.
-- OpenRouter에서 이미지 입력을 지원하는 실시간 채팅 모델을 불러와 검색·선택할 수 있다. 선택은 같은 브라우저에 유지되며 다음 VLM 요청에 적용된다.
-- 전면 RGB 미리보기는 30fps 고정이며 실제 수신 속도는 환경에 따라 달라진다.
-- 직접 관절 목표는 미리보기까지 제공한다. LiDAR는 PC2의 표준 점군 토픽을 자동 구독하며, 실제 기기에서 점군 발행과 수신을 확인해야 한다.
-
-상세 매핑과 조건은 [SDK_MAPPING.md](docs/SDK_MAPPING.md), 현장 실행 순서는 [OPERATIONS.md](docs/OPERATIONS.md), 검증 범위는 [VERIFICATION.md](VERIFICATION.md)를 참고한다.
-
-## 검증과 변경
-
-```bash
-./preflight.sh --offline --test
-python3 refresh_checksums.py --check
-```
-
-소스를 수정했으면 `python3 refresh_checksums.py`로 무결성 목록을 갱신한다. GitHub Actions는 Linux와 macOS의 Python 3.10/3.12에서 설치·Bash 구문·오프라인 검사를 수행한다. 실제 DGX·X2 연결과 동작 검증은 별도 현장 확인이 필요하다.
+개발용 `.sh` 실행과 테스트는 [개발 안내](docs/DEVELOPMENT.md), 기능별 SDK 연결은 [SDK 매핑](docs/SDK_MAPPING.md), 점검 결과는 [검증 기록](VERIFICATION.md)에 정리했습니다.

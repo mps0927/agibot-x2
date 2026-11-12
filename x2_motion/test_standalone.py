@@ -120,6 +120,18 @@ class LocalBoundary(unittest.IsolatedAsyncioTestCase):
         self.client=TestClient(TestServer(application));await self.client.start_server()
         self.origin=str(self.client.make_url('/')).rstrip('/')
     async def asyncTearDown(self):await self.client.close();self.tmp.cleanup()
+    async def test_lidar_polling_resumes_after_an_ssh_write_disconnect(self):
+        self.d.state['connected']=True;self.d.state_at=time.monotonic()
+        sent=[]
+        async def send(dashboard,message):
+            sent.append(message)
+            if len(sent)==1:raise asyncssh.ConnectionLost('fixture disconnected while writing')
+            dashboard.closing=True
+        with patch('dashboard_base.Dashboard.send',new=send):
+            await asyncio.wait_for(self.d.poll_lidar(),2)
+        self.assertEqual(len(sent),2)
+        self.assertTrue(all(message['action']=='lidar_frame_request' for message in sent))
+        self.assertNotEqual(sent[0]['request_id'],sent[1]['request_id'])
     async def test_lidar_request_never_connects_to_a_separate_local_bridge(self):
         with patch.object(self.d.session,'get',Mock(side_effect=AssertionError('Unexpected sidecar connection'))) as get:
             response=await self.client.post('/api/infer',json={'instruction':'관찰','include_lidar':True},headers={'Origin':self.origin})

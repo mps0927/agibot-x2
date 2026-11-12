@@ -2,18 +2,23 @@
 
 로봇을 사용할 PC에 이 프로젝트를 설치하고 X2를 LAN 케이블로 직접 연결합니다. 설치, 대시보드 실행과 브라우저 조작은 모두 이 PC에서 진행합니다.
 
-Windows, Linux(DGX Spark 포함), macOS에서 같은 실행 스크립트를 사용합니다. Windows에서는 Git Bash, Linux와 macOS에서는 터미널 앱에 명령을 입력합니다.
+Windows, Linux(DGX Spark 포함), macOS에서 Docker로 실행합니다. Windows에서는 PowerShell, Linux와 macOS에서는 터미널 앱에 명령을 입력합니다. 각 PC에서 설치·실행·로봇 연결까지 진행합니다.
+
+로봇 없이 화면부터 확인하려면 [5. 대시보드 설치와 실행](#dashboard)부터 진행합니다. 이후 로봇의 전원과 LAN을 연결하면 대시보드가 자동으로 접속합니다.
 
 대시보드의 버튼으로 착석 고정, 일어서기, 프리셋, 이동, 앉기와 관절 힘 해제까지 진행합니다. 아래 순서대로 화면의 버튼을 클릭합니다.
 
 리모컨으로 조작할 때는 [리모컨 사용설명서](REMOTE_CONTROL_GUIDE_KO.md)를 엽니다.
 
-이 설명서의 명령 상자는 한 줄씩 복사해 터미널에 붙여 넣고 Enter를 누릅니다. 명령 처리가 끝나 입력할 수 있는 줄이 다시 나타나면 다음 명령을 실행합니다.
+이 설명서의 명령 상자는 한 줄씩 복사해 터미널에 붙여 넣고 Enter를 누릅니다. 명령 처리가 끝나면 다음 명령을 실행합니다. `docker compose up`은 서버 로그를 계속 표시하므로, 실행 중 다른 명령은 새 터미널을 같은 폴더에서 열어 입력합니다.
 
 | 용어 | 뜻 |
 |---|---|
 | 대시보드 | 브라우저에서 여는 로봇 조작 화면입니다. |
 | 터미널 | 명령을 글자로 입력하는 프로그램입니다. |
+| Docker | 대시보드와 필요한 실행 환경을 함께 실행하는 프로그램입니다. |
+| 컨테이너 | Docker 안에서 실행 중인 대시보드입니다. |
+| 볼륨 | 컨테이너를 종료한 뒤에도 기록을 보관하는 Docker 저장 공간입니다. |
 | `.env` | 로봇 접속 정보와 AI 서비스 키를 저장하는 설정 파일입니다. |
 | SSH | PC에서 로봇에 접속하는 연결 방식입니다. |
 | 프리셋 | 손 흔들기처럼 로봇에 미리 등록된 동작입니다. |
@@ -35,6 +40,7 @@ Windows, Linux(DGX Spark 포함), macOS에서 같은 실행 스크립트를 사�
 12. [충전하기](#charging)
 13. [자주 발생하는 문제](#troubleshooting)
 14. [매일 사용하는 순서](#daily)
+15. [라이다 확인하기](#lidar)
 
 <a id="prepare"></a>
 ## 1. 사용 전 준비
@@ -46,7 +52,7 @@ Windows, Linux(DGX Spark 포함), macOS에서 같은 실행 스크립트를 사�
 | X2 Ultra | 배터리를 장착하고 잔량을 50% 이상으로 준비합니다. |
 | 등받이 의자 | 높이 35~40cm의 단단하고 움직이지 않는 의자를 준비합니다. |
 | 보조자 | 로봇 뒤쪽 손잡이를 잡아 기립·착석·힘 해제 중 자세를 지지합니다. |
-| 개발 PC | Windows PC, Linux PC(DGX Spark 포함) 또는 Mac을 준비합니다. Windows에서는 Git Bash를 사용합니다. |
+| 개발 PC | Windows PC, Linux PC(DGX Spark 포함) 또는 Mac을 준비합니다. Git과 Docker를 설치합니다. |
 | 전용 리모컨 | 충전하고 로봇에 연결해 즉시 정지할 수 있도록 준비합니다. |
 | LAN 케이블 | PC에 유선 포트가 없으면 USB Ethernet 어댑터를 함께 준비합니다. |
 | SSH 접속 정보 | 로봇의 계정, 비밀번호 또는 SSH 키를 준비합니다. |
@@ -133,166 +139,135 @@ OmniHand가 장착된 로봇은 의자에 앉은 상태에서 기립을 준비�
 
 Wi-Fi 등 인터넷 연결은 유지하고, 주소 변경은 로봇에 연결한 유선 어댑터에 적용합니다. VLM을 사용할 때는 인터넷 연결도 필요합니다.
 
-### 4.3 로봇 SSH 접속을 확인합니다
+### 4.3 대시보드에서 연결을 확인합니다
 
-Windows에서는 Git Bash를, Linux와 macOS에서는 터미널 앱을 열어 실행합니다.
-
-```bash
-ssh agi@10.0.1.41
-```
-
-처음 연결하면 `Are you sure you want to continue connecting`이라는 확인 메시지가 나옵니다. 연결한 로봇의 주소와 키가 맞는지 장비 담당자에게 확인한 뒤 `yes`를 입력하고 Enter를 누릅니다. 이어서 로봇 SSH 비밀번호를 입력하고 Enter를 누릅니다. 비밀번호 입력 중에는 화면에 글자나 별표가 표시되지 않습니다.
-
-로봇 프롬프트가 나타나면 접속한 상태입니다. 다음 명령으로 PC 터미널로 돌아옵니다.
-
-```bash
-exit
-```
-
-이후 설치·실행 명령은 PC의 `agibot-x2` 폴더에서 입력합니다.
+처음 사용하는 PC에서는 아래 설치·실행과 접속 키 등록을 진행합니다. 이미 등록을 마쳤다면 대시보드를 켜 둔 채 로봇의 전원과 LAN을 연결하고 **AGIBOT X2 연결됨** 표시를 기다립니다.
 
 <a id="dashboard"></a>
 ## 5. 대시보드 설치와 실행
 
-Docker를 사용하는 경우에는 [README의 Docker 실행 순서](../README.md#docker로-실행)에 따라 이미지 빌드와 SSH 호스트 키 등록을 마친 뒤 `docker compose up -d`를 실행합니다. 같은 PC에서 대시보드를 열고 아래 6번의 로봇 제어 준비를 진행합니다.
+### 5.1 Git과 Docker를 준비합니다
 
-로봇이 연결되고 라이다 점군이 수신되면 대시보드의 **LiDAR · X2 센서**에 점군이 표시됩니다. VLM 요청에 사용하려면 **VLM에 점군 요약 함께 전달**을 선택합니다. 점군이 대기 중이면 토픽과 센서 상태를 확인합니다.
+Git과 Docker Compose를 준비합니다. Windows와 Mac에서는 Docker Desktop을 실행하고, Linux·DGX Spark에서는 Docker Engine과 Compose 플러그인을 준비합니다. Docker 이미지 안에 Python과 필요한 패키지가 함께 설치됩니다.
 
-### 5.1 처음 사용하는 PC
-
-Python 3.10 이상과 Git을 준비합니다. Windows에서는 Git에 포함된 **Git Bash**를 사용합니다. Linux와 macOS에서는 **터미널** 앱을 사용합니다.
-
-Windows에서는 프로젝트를 저장할 폴더를 탐색기로 열고 빈 곳을 오른쪽 클릭해 **Open Git Bash here**를 선택합니다. Windows 11에서는 **더 많은 옵션 표시** 안에 있을 수 있습니다. macOS에서는 Spotlight에서 `터미널`을 검색하고, Linux에서는 앱 목록에서 `터미널`을 엽니다.
-
-열린 창에서 다음 명령으로 설치 상태를 확인합니다.
+[Docker 설치 안내](https://docs.docker.com/get-started/get-docker/)에 따라 준비한 뒤 명령 창에서 확인합니다.
 
 ```bash
 git --version
-python --version
+docker version
+docker compose version
 ```
 
-`python` 명령을 찾지 못하면 `python3 --version`을 확인합니다. Python 버전이 3.10 이상이면 사용할 수 있습니다. 필요한 프로그램이 빠져 있으면 설치 후 터미널을 다시 엽니다.
+`docker version`에 Client와 Server 정보가 모두 나오고 Compose 버전이 표시되면 다음으로 진행합니다.
 
-프로젝트를 저장할 폴더에서 아래 명령을 한 줄씩 실행합니다. `git clone`은 프로젝트를 내려받고, `cd`는 내려받은 폴더로 들어가는 명령입니다.
+### 5.2 저장소·설정을 준비하고 실행합니다
 
-이미 `agibot-x2` 폴더가 있다면 그 폴더에서 터미널을 열고 아래 내려받기 명령을 건너뜁니다. 기존 `.env`가 있으면 내용을 확인해 사용합니다.
+Windows에서는 PowerShell, Linux·macOS에서는 터미널에서 다음 명령을 실행합니다. 이미 내려받은 저장소가 있으면 해당 폴더에서 시작합니다.
 
 ```bash
 git clone https://github.com/mps0927/agibot-x2.git
 cd agibot-x2
+```
+
+처음 설치하여 `.env`가 없을 때만 설정 예시를 복사합니다.
+
+```bash
 cp .env.example .env
 ```
 
-GitHub 로그인이 나오면 저장소 접근 권한이 있는 계정으로 로그인합니다.
-
-`cp .env.example .env`는 설정 예시를 복사해 `.env` 파일을 만드는 명령입니다. `.env`를 메모장이나 텍스트 편집기로 열어 연결 정보를 입력합니다. Windows에서는 Git Bash에서 `notepad .env`로 열 수 있습니다. 파일 목록에 보이지 않으면 숨김 파일 표시를 켭니다.
-
-아래 예시에서 `=` 오른쪽의 한글 안내 부분을 실제 값으로 바꿉니다. 파일 이름은 `.env`, 저장 형식은 UTF-8로 유지합니다.
+`.env`를 텍스트 편집기로 열어 사용할 기능의 접속 정보를 입력합니다. Windows에서는 `notepad .env`로 열 수 있습니다.
 
 ```dotenv
 X2_SSH_HOST=10.0.1.41
 X2_SSH_USER=agi
-X2_SSH_PASSWORD=사용_중인_로봇의_SSH_비밀번호
-X2_SSH_KNOWN_HOSTS=~/.ssh/known_hosts
-X2_PORT=8766
+X2_SSH_PASSWORD=로봇의_SSH_비밀번호
 OPENROUTER_API_KEY=발급받은_OpenRouter_키
-VLM_MODEL=qwen/qwen3-vl-30b-a3b-instruct
 ```
 
-| 항목 | 입력할 내용 |
+화면만 확인할 때는 비밀번호와 API 키를 비워 둘 수 있습니다. 이미지로 VLM 분석을 할 때는 OpenRouter 키를, 로봇을 연결할 때는 SSH 접속 정보를 입력합니다. 기존 `.env`가 있으면 필요한 항목을 수정해 사용합니다.
+
+```bash
+docker compose up
+```
+
+첫 실행에는 이미지와 필요한 패키지를 준비하므로 시간이 걸립니다. 서버가 시작되면 같은 기기의 브라우저에서 **[대시보드 열기](http://127.0.0.1:8766)**를 누릅니다. 이 명령은 실행 로그를 계속 표시합니다. 터미널을 닫아도 유지하려면 `docker compose up -d`를 사용합니다.
+
+로봇이 없어도 대시보드가 열리며, 이미지를 업로드해 **계획만 보기**로 VLM을 테스트할 수 있습니다. 로봇 접속은 백그라운드에서 계속 시도합니다. 로봇이 연결되면 영상·상태 수신과 라이다 구독을 시작하고, 연결이 끊기면 자동으로 재연결합니다. 실제 조종은 화면에서 제어 준비를 마친 뒤 시작합니다.
+
+### 5.3 로봇을 처음 연결할 때
+
+1. [전원 켜기](#power-on)에 따라 부팅합니다.
+2. PC와 X2를 LAN으로 연결하고 [PC 유선 IP](#network-ip)를 설정합니다.
+3. `.env`의 SSH 접속 정보를 입력합니다. 실행 중 설정을 바꿨다면 다음 명령으로 적용합니다.
+
+```bash
+docker compose up -d --force-recreate
+```
+
+4. 별도 터미널을 같은 저장소 폴더에서 열고, 로봇의 접속 키를 등록합니다. 표시된 지문을 장비 담당자가 제공한 지문과 대조한 뒤 `yes`를 입력합니다.
+
+```bash
+docker compose run --rm x2 trust-host
+docker compose run --rm x2 doctor
+```
+
+키는 Docker 데이터 볼륨에 저장됩니다. 같은 PC·같은 로봇을 다시 사용할 때는 등록을 반복할 필요가 없습니다. 개인 키 인증을 사용하는 경우 [개인 키 연결 방법](#ssh-key)을 따릅니다. PC에서 직접 SSH로 접속했던 경우에도 Docker에서 처음 연결할 때는 이 등록을 진행합니다.
+
+5. 화면 상단의 **AGIBOT X2 연결됨**, RGB 영상과 현재 모드를 확인합니다. **이동 정지** 옆에서 배터리를, **관절 상태**에서 관절 각도를 확인합니다. 이어서 **착석 자세 고정 → 일어서기 → 제어 활성화** 순서로 진행합니다. 다음 사용부터는 `docker compose up`으로 실행하고 전원·LAN을 연결하면 자동으로 접속합니다.
+
+### 5.4 상태 확인·종료·업데이트
+
+`docker compose ps`의 `healthy`는 대시보드 서버가 응답한다는 뜻입니다. 로봇 연결은 화면 상단의 연결 표시와 영상으로 확인합니다. 연결이 끊겼다가 다시 접속하면 현재 자세를 확인하고 제어를 활성화합니다.
+
+| 할 일 | 명령 |
 |---|---|
-| `X2_SSH_HOST` | 로봇 주소입니다. 기본값은 `10.0.1.41`입니다. |
-| `X2_SSH_USER` | 로봇 로그인 계정입니다. 기본값은 `agi`입니다. |
-| `X2_SSH_PASSWORD` | 앞서 SSH 접속 확인에 사용한 로봇 비밀번호입니다. |
-| `X2_SSH_KNOWN_HOSTS` | 앞서 확인한 로봇 연결 키가 저장된 파일입니다. 기본값을 유지합니다. |
-| `X2_PORT` | 대시보드 주소에 사용하는 번호입니다. `8766`을 유지합니다. |
-| `OPENROUTER_API_KEY` | OpenRouter에서 발급받은 키입니다. 수동 조종만 할 때는 비워 둡니다. |
-| `VLM_MODEL` | 처음 선택할 AI 모델입니다. 실행 후에는 대시보드의 모델 목록에서 바꿀 수 있습니다. |
+| 백그라운드 실행 | `docker compose up -d` |
+| 대시보드 실행 상태 확인 | `docker compose ps` |
+| 최근 로그 확인 | `docker compose logs --tail 100 x2` |
+| 로봇 연결·SDK·라이다 토픽 진단 | `docker compose run --rm x2 doctor` |
+| `.env` 변경 적용 | `docker compose up -d --force-recreate` |
+| 대시보드 종료 | `docker compose down` |
 
-SSH 키를 사용하는 경우에는 `X2_SSH_KEY`에 키 파일 경로를 지정합니다. `.env.example`의 해당 항목을 참고합니다.
+로봇을 사용했다면 [의자에 앉히고 힘 해제하기](#power-off)를 마친 뒤 대시보드를 종료합니다. `docker compose up`으로 실행한 터미널에서는 `Ctrl+C`로도 대시보드를 중지할 수 있습니다.
 
-```dotenv
-X2_SSH_KEY=~/.ssh/id_ed25519
-```
-
-환경 준비 명령을 실행합니다.
+소스를 업데이트할 때는 조작을 마치고 실행합니다.
 
 ```bash
-./setup.sh
-```
-
-프로젝트 폴더 안에 `.venv`라는 Python 실행 환경이 만들어집니다. 기존 Python을 사용하며, 이후에는 같은 환경과 설치된 패키지를 재사용합니다.
-
-### 5.2 로봇 연결 상태를 확인합니다
-
-```bash
-./preflight.sh --field
-```
-
-정상적으로 끝나면 마지막에 다음 문구가 나타납니다.
-
-```text
-Preflight --field: OK (port 8766)
-```
-
-오류가 나오면 [자주 발생하는 문제](#troubleshooting)에서 해당 메시지를 확인하고, 해결한 뒤 같은 명령을 다시 실행합니다.
-
-### 5.3 대시보드를 실행합니다
-
-```bash
-./start_field.sh
-./status.sh
-```
-
-대시보드를 실행한 같은 기기의 브라우저에서 다음 주소를 엽니다.
-
-[대시보드 열기](http://127.0.0.1:8766)
-
-브라우저 주소창에 `http://127.0.0.1:8766`을 직접 입력해도 됩니다.
-
-화면에서 다음 항목을 확인합니다.
-
-- 상단 연결 표시가 `AGIBOT X2 연결됨`으로 바뀝니다.
-- 로봇 RGB 영상이 들어옵니다.
-- 현재 모드가 표시됩니다.
-- 상단 **이동 정지** 버튼 옆에서 배터리 잔량을 확인합니다.
-- 상단 **관절 상태**를 누르면 왼팔·오른팔·왼다리·오른다리·허리·머리의 현재 각도를 슬라이더로 볼 수 있습니다. 오류가 있는 관절은 빨간색으로 표시됩니다.
-
-`start_field.sh`로 시작한 서버는 터미널을 닫아도 계속 실행됩니다. 상태는 `./status.sh`, 실행 로그는 `.runtime/dashboard.log`에서 확인합니다.
-
-이미 저장 사진 화면을 사용 중이었다면 다음 순서로 실물 연결 화면을 실행합니다.
-
-```bash
-./stop.sh
-./start_field.sh
-```
-
-### 5.4 Windows 환경이 아닌 경우
-
-Linux(DGX Spark 포함)와 macOS에서도 5.1~5.3의 명령을 그대로 사용합니다. 터미널 앱을 열고 다음 순서로 진행합니다.
-
-1. PC에 프로젝트를 내려받고 `cd agibot-x2`로 폴더에 들어갑니다.
-2. 처음 설치할 때 `cp .env.example .env`를 실행하고, `.env`에 로봇 접속 정보와 OpenRouter 키를 입력합니다.
-3. PC와 X2를 LAN으로 직접 연결하고 [유선 IP](#network-ip)를 설정합니다.
-4. `ssh agi@10.0.1.41`로 접속을 확인한 뒤 `exit`로 PC 터미널에 돌아옵니다.
-5. 프로젝트 폴더에서 처음에는 `./setup.sh`를 실행하고, 대시보드는 `./start_field.sh`로 시작합니다.
-6. 이 PC의 브라우저에서 [대시보드 열기](http://127.0.0.1:8766)를 누릅니다.
-
-실행 명령은 모두 `./start_field.sh`입니다. 스크립트가 프로젝트의 Python 실행 환경을 찾아 사용합니다.
-
-### 5.5 다음 날 다시 실행하거나 업데이트합니다
-
-다음 날에는 로봇 전원과 LAN을 연결하고, PC의 `agibot-x2` 폴더에서 터미널을 열어 `./start_field.sh`를 실행합니다. 같은 PC의 [대시보드](http://127.0.0.1:8766)를 엽니다.
-
-프로젝트를 최신 버전으로 업데이트할 때는 로봇 조작을 마치고 대시보드를 종료한 뒤 실행합니다.
-
-```bash
-./stop.sh
+docker compose down
 git pull --ff-only
-./start_field.sh
+docker compose up -d --build
 ```
 
-업데이트 후 실행하면 필요한 패키지도 함께 확인합니다. 기존 `.env`의 연결 정보는 계속 사용합니다.
+`.env`와 Docker 볼륨의 기록은 유지됩니다. 촬영 사진과 VLM 기록은 컨테이너의 `/data/artifacts/`에 저장되며, PC 폴더로 복사하는 방법은 [요청 사진과 응답 확인](#records)을 참고합니다.
+
+### 5.5 Windows 환경이 아닌 경우
+
+Linux(DGX Spark 포함)와 macOS에서도 같은 명령을 사용합니다. 해당 기기에서 저장소와 `.env`를 준비하고 `docker compose up`을 실행합니다. 로봇은 해당 기기의 LAN에 직접 연결하고, 브라우저도 해당 기기에서 엽니다.
+
+<a id="ssh-key"></a>
+### 5.6 개인 키로 접속하는 경우
+
+비밀번호 대신 개인 키를 사용하는 경우, 개인 키 파일을 이 PC에 준비합니다. Windows PowerShell에서는 경로를 다음과 같이 지정합니다.
+
+```powershell
+$env:X2_HOST_SSH_KEY = "C:/Users/사용자명/.ssh/id_ed25519"
+```
+
+Linux·macOS에서는 다음과 같이 지정합니다.
+
+```bash
+export X2_HOST_SSH_KEY="$HOME/.ssh/id_ed25519"
+```
+
+이후 이 설명서의 Compose 명령에 `-f compose.yaml -f compose.ssh-key.yaml`을 함께 사용합니다.
+
+```bash
+docker compose -f compose.yaml -f compose.ssh-key.yaml run --rm x2 trust-host
+docker compose -f compose.yaml -f compose.ssh-key.yaml run --rm x2 doctor
+docker compose -f compose.yaml -f compose.ssh-key.yaml up -d
+```
+
+새 터미널에서는 키 경로를 다시 지정합니다. 종료할 때도 같은 두 파일을 지정한 뒤 `down`을 실행합니다.
 
 <a id="control-ready"></a>
 ## 6. 로봇 제어 준비
@@ -444,7 +419,7 @@ git pull --ff-only
 ### 9.1 연결을 준비합니다
 
 1. `.env`에 OpenRouter API 키를 입력합니다.
-2. `.env`를 변경했다면 대시보드를 종료한 뒤 다시 실행합니다.
+2. `.env`를 변경했다면 `docker compose up -d --force-recreate`로 적용합니다.
 3. 화면의 VLM 연결 표시가 준비 상태인지 확인합니다.
 4. **RGB 프레임 선택**을 누르거나 **관점 이미지 업로드**로 사용할 이미지를 선택합니다.
 
@@ -489,12 +464,28 @@ git pull --ff-only
 
 기립과 착석은 화면 상단의 준비 버튼으로 진행합니다.
 
+<a id="records"></a>
 ### 9.5 요청에 사용한 사진과 응답을 확인합니다
 
-PC의 `agibot-x2` 폴더에서 `x2_motion` → `artifacts` → `vlm_runs`를 엽니다. 요청마다 날짜·시간과 식별자가 붙은 폴더가 만들어집니다. 확인할 요청의 폴더를 열고 `input.jpg`를 더블클릭하면 사용한 사진을 볼 수 있습니다.
+Docker의 `agibot-x2-data` 볼륨에 기록을 보관합니다. 컨테이너 안의 위치는 `/data/artifacts/vlm_runs/`이며, `docker compose down`으로 종료해도 유지됩니다.
+
+PC에서 사진을 열려면 다음과 같이 복사합니다. 아래 명령은 저장소 폴더에서 실행합니다.
+
+1. 조작과 VLM 요청을 마칩니다.
+2. 처음 복사할 때 `mkdir artifacts`로 PC의 보관 폴더를 만듭니다. 이미 폴더가 있으면 그대로 사용합니다.
+3. 대시보드를 중지하고 기록을 복사합니다.
+
+```bash
+docker compose stop
+docker compose cp x2:/data/artifacts/. ./artifacts
+```
+
+이미 `docker compose down`으로 종료했다면 `docker compose create x2`를 실행한 뒤 복사합니다.
+
+PC의 `artifacts` → `vlm_runs`에서 요청별 폴더를 엽니다.
 
 ```text
-x2_motion/artifacts/vlm_runs/<요청별 폴더>/
+artifacts/vlm_runs/<요청별 폴더>/
 ├── input.jpg
 ├── instruction.json
 ├── model_request.json
@@ -503,13 +494,14 @@ x2_motion/artifacts/vlm_runs/<요청별 폴더>/
 └── run_manifest.json
 ```
 
-- `input.jpg`: 해당 요청에 사용한 사진입니다. 사진을 보낸 요청에 생성됩니다.
+- `input.jpg`: 해당 요청에 보낸 사진입니다.
 - `instruction.json`: 입력한 지시입니다.
 - `model_request.json`, `model_response.json`: 모델 요청과 응답입니다.
 - `result.json`: 화면에 전달한 결과입니다.
-- `run_manifest.json`: 요청 시간과 이미지 정보, 실행 피드백을 확인합니다.
+- `run_manifest.json`: 요청 시간과 이미지 정보, 실행 피드백입니다.
+- `lidar_input.json`, `lidar_frame.json`: 점군을 첨부한 요청의 요약과 표본 좌표입니다.
 
-오류가 발생한 요청은 해당 폴더의 `error.json`과 실행 로그를 함께 확인합니다.
+오류가 발생한 요청은 `error.json`과 실행 로그를 함께 확인합니다. 복사를 마친 뒤 계속 사용하려면 `docker compose up -d`, 종료하려면 `docker compose down`을 실행합니다. 기록을 보관할 때는 `down`에 볼륨 삭제 옵션 `-v`를 붙이지 않습니다.
 
 <a id="stop"></a>
 ## 10. 정지와 제어 해제
@@ -579,11 +571,11 @@ x2_motion/artifacts/vlm_runs/<요청별 폴더>/
 PC의 저장소 폴더에서 실행합니다.
 
 ```bash
-./stop.sh
-./status.sh
+docker compose down
+docker compose ps
 ```
 
-상태가 `stopped`로 표시되는지 확인합니다.
+`x2` 컨테이너가 실행 목록에서 사라졌는지 확인합니다. `docker compose up`을 실행했던 터미널에서 `Ctrl+C`를 누르면 컨테이너가 중지됩니다.
 
 ### 11.5 배터리 전원을 끕니다
 
@@ -627,38 +619,38 @@ PC의 저장소 폴더에서 실행합니다.
 
 | 증상 | 확인하고 조치할 순서 |
 |---|---|
-| `python: command not found` 또는 `Python 3.10+ is required` | `python3 --version`도 확인합니다. Python 3.10 이상을 설치하고 터미널을 다시 연 뒤 `./setup.sh`를 실행합니다. |
-| `git: command not found` | Git을 설치하고 터미널을 다시 엽니다. Windows에서는 Git Bash를 사용합니다. |
-| `Repository not found` | 저장소 접근 권한이 있는 GitHub 계정으로 로그인했는지 확인하고, 저장소 관리자에게 계정의 접근 권한을 요청합니다. |
-| `No such file or directory`로 스크립트 실행 실패 | 현재 폴더 안에 `start_field.sh`가 있는지 확인합니다. Windows에서는 프로젝트 폴더를 오른쪽 클릭해 Git Bash를 다시 엽니다. Linux·macOS에서는 `cd`로 프로젝트 폴더에 들어갑니다. |
-| `.env` 설정이 적용되지 않음 | 파일 이름이 정확히 `.env`인지 확인합니다. `.env.txt`로 저장했다면 이름을 고칩니다. 저장 후 `./stop.sh`와 `./start_field.sh`를 차례로 실행합니다. |
-| Ubuntu에서 `venv` 생성 실패 | `sudo apt install python3-venv`로 가상환경 기능을 설치하고 `./setup.sh`를 다시 실행합니다. |
-| 전원이 켜지지 않음 | 배터리 장착 → 잔량 → 짧게 1회 누른 뒤 5초 길게 누르는 순서를 확인합니다. |
-| SSH 접속 시간 초과 | 로봇 전원 → LAN 링크 → PC 유선 IP → `10.0.1.41` 주소를 확인합니다. |
-| `Permission denied` | SSH 계정과 비밀번호 또는 키 경로를 확인합니다. |
-| 호스트 키 변경 메시지 | 연결한 로봇과 등록된 키를 확인하고 담당자와 실제 키를 대조한 뒤 등록 정보를 갱신합니다. |
-| `8766` 포트 사용 중 | 기존 대시보드에서 `./stop.sh`를 실행하고 다시 시작합니다. 현재 기기에서 실행 중인 대시보드와 같은 포트를 사용하는 프로그램을 확인합니다. |
-| `different options` 메시지 | `./stop.sh` 실행 후 원하는 실행 명령으로 다시 시작합니다. |
-| 브라우저에서 페이지를 열 수 없음 | 같은 PC에서 `./status.sh`를 실행합니다. `stopped`이면 `./start_field.sh`를 실행하고 [대시보드](http://127.0.0.1:8766)를 다시 엽니다. 오류가 나오면 `.runtime/dashboard.log`를 확인합니다. |
-| 저장 사진·실물 미연결 표시 | 현재 서버를 종료하고 `./start_field.sh`로 실행합니다. |
-| 읽기 전용 표시 | 서버를 종료하고 전체 조종용 `./start_field.sh`로 다시 실행합니다. |
+| `docker` 명령을 찾을 수 없음 | Docker를 설치한 뒤 터미널을 다시 엽니다. |
+| Docker 엔진에 연결할 수 없음 | Windows·Mac에서는 Docker Desktop을 열고 엔진 준비를 기다립니다. Linux에서는 Docker 서비스를 확인합니다. `docker version`의 Server 정보가 나오는지 확인합니다. |
+| `git: command not found` | Git을 설치하고 터미널을 다시 엽니다. |
+| `Repository not found` | 저장소 접근 권한이 있는 GitHub 계정으로 로그인합니다. |
+| `no configuration file provided` | `compose.yaml`이 있는 `agibot-x2` 폴더에서 명령을 실행합니다. |
+| `.env`를 찾을 수 없음 | `.env.example`을 `.env`로 복사하고 설정을 입력합니다. 파일 이름이 `.env.txt`가 되지 않았는지 확인합니다. |
+| `.env` 설정이 적용되지 않음 | 저장 후 `docker compose up -d --force-recreate`를 실행합니다. |
+| 전원이 켜지지 않음 | 배터리 장착 → 잔량 → 짧게 1회 누른 뒤 약 5초 길게 누르는 순서를 확인합니다. |
+| `X2 연결 대기: TimeoutError` | 로봇 없이 화면을 확인 중이면 그대로 사용합니다. 로봇을 사용할 때는 전원 → LAN 링크 → PC 유선 IP → 주소를 확인합니다. |
+| `Host key is not trusted` 또는 접속 키 파일 없음 | 로봇 연결 후 `docker compose run --rm x2 trust-host`로 키를 확인해 등록합니다. |
+| `Permission denied`로 SSH 인증 실패 | `.env`의 계정·비밀번호 또는 개인 키 설정을 확인합니다. 수정 후 컨테이너를 다시 만듭니다. |
+| `/root/.ssh/crt` 권한 오류 | 최신 소스를 받은 뒤 `docker compose up -d --build`로 이미지를 갱신합니다. |
+| 호스트 키 변경 메시지 | 연결한 로봇과 기존 등록 정보를 장비 담당자에게 확인합니다. |
+| `8766` 포트 사용 중 | 기존 실행을 확인합니다. 같은 프로젝트의 Docker는 `docker compose down`, 이전 Python 서버는 `./stop.sh`로 종료한 뒤 Docker를 시작합니다. |
+| 브라우저에서 페이지를 열 수 없음 | `docker compose ps`와 로그를 확인합니다. 같은 PC에서 `docker compose up -d`를 실행하고 [대시보드](http://127.0.0.1:8766)를 엽니다. |
+| 로봇 연결 대기·영상 없음 | 전원·LAN·IP·SSH 정보·접속 키 등록을 확인하고 `docker compose run --rm x2 doctor`를 실행합니다. 연결 후 영상 수신을 기다립니다. |
+| 읽기 전용 또는 movement 권한 꺼짐 | 저장소의 기본 `compose.yaml`로 실행했는지 확인합니다. `docker compose down` 후 `docker compose up -d --build`로 시작하고 현장 확인과 제어 활성화를 진행합니다. |
 | 착석 고정 버튼 비활성화 | 실물 연결 → 착석·지지 체크 → 다른 조종 창의 제어 해제 → 현재 자세와 오류 메시지를 확인합니다. |
 | 일어서기 버튼 비활성화 | 착석 고정 모드 → 의자·양발·보조자 체크 → 제어 해제 → 이전 동작 종료를 확인합니다. |
 | 제어 활성화 버튼 비활성화 | 실제 기립과 안정 서기 표시 → 현장 확인 체크 → 다른 창의 제어 상태를 확인합니다. |
 | 프리셋 버튼 비활성화 | 안정 서기 → 현장 확인 체크 → 이전 요청의 SDK 응답 → 연결 상태를 확인합니다. |
-| 요청 후 동작이 진행되지 않음 | 현재 모드·SDK 응답·오류 표시를 확인합니다. 실제 자세를 점검한 뒤 다음 조작을 결정합니다. |
-| 카메라가 멈추거나 느림 | LAN 연결과 PC·로봇 부하를 확인합니다. 현재 수신 속도 표시를 확인한 뒤 다시 연결합니다. |
-| VLM 키 설정 필요 | `.env`의 키를 확인하고 서버를 다시 실행하거나 화면의 VLM 연결 설정에서 키를 적용합니다. |
-| `movement` 권한이 꺼짐 | 서버를 종료하고 `./start_field.sh`로 실행한 뒤 현장 확인과 제어 활성화를 진행합니다. |
-| 제어 버튼과 모드 전환이 응답하지 않음 | 앞서 데이터 스튜디오 작업에서 MC를 중지했는지 장비 담당자에게 확인하고 기본 운용 상태로 복구한 뒤 다시 준비합니다. |
+| 요청 후 동작이 진행되지 않음 | 현재 모드·SDK 응답·오류 표시와 실제 자세를 확인합니다. |
+| 카메라가 멈추거나 느림 | LAN 연결과 PC·로봇 부하, 현재 수신 속도를 확인합니다. |
+| 라이다 점군 수신 대기 | [라이다 확인하기](#lidar)에 따라 토픽·발행 상태를 확인합니다. |
+| VLM 키 설정 필요 | `.env`의 키를 확인하고 컨테이너를 다시 만들거나 화면의 VLM 연결 설정에서 키를 적용합니다. |
+| 제어 버튼과 모드 전환이 응답하지 않음 | 앞선 데이터 스튜디오 작업에서 MC를 중지했는지 장비 담당자에게 확인하고 기본 운용 상태로 복구합니다. |
 
-로그는 저장소 폴더에서 다음 명령으로 확인합니다.
+최근 로그는 다음 명령으로 확인합니다.
 
 ```bash
-tail -n 100 .runtime/dashboard.log
+docker compose logs --tail 100 x2
 ```
-
-`.env`를 수정한 뒤에는 서버를 종료하고 다시 시작합니다. 같은 항목이 환경변수에도 설정돼 있으면 현재 터미널의 환경변수 값을 함께 확인합니다.
 
 <a id="daily"></a>
 ## 14. 매일 사용하는 순서
@@ -668,7 +660,7 @@ tail -n 100 .runtime/dashboard.log
 1. 의자·양발 접지·보조자 지지 준비
 2. 배터리 버튼 짧게 1회 → 약 5초 길게 → 부팅 약 1분 대기
 3. PC와 로봇 LAN 연결
-4. PC에서 `./start_field.sh`
+4. PC에서 Docker를 실행하고 `docker compose up -d`
 5. 같은 기기의 브라우저에서 `http://127.0.0.1:8766` 열기
 6. 상단 **착석 자세 고정 → 일어서기 → 제어 활성화**
 7. 프리셋, 이동 또는 VLM 명령 사용
@@ -678,12 +670,31 @@ tail -n 100 .runtime/dashboard.log
 1. 진행 중인 동작 종료 → 이동 정지 → 제어 해제
 2. 의자 위치·보조자 지지 확인 → **의자에 앉기**
 3. 완전 착석 확인 → 화면에서 **댐핑** 선택·전환 → **영토크 · 힘 해제** 선택·전환
-4. PC에서 `./stop.sh`
+4. PC에서 `docker compose down`
 5. 배터리 버튼 짧게 1회 → 약 5초 길게 → 전원 꺼짐 확인
 6. 케이블 정리와 충전
+
+<a id="lidar"></a>
+## 15. 라이다 확인하기
+
+1. 로봇이 연결되고 현재 상태가 갱신되는지 확인합니다.
+2. **LiDAR · X2 센서** 영역을 확인합니다. 기본 토픽은 `/aima/hal/sensor/lidar_chest_front/lidar_pointcloud`입니다.
+3. **점군 수신 중** 표시와 점들을 확인합니다. 화면의 동심원 간격은 센서 좌표 기준 1m입니다.
+4. VLM에 함께 전달하려면 **VLM에 점군 요약 함께 전달**을 체크한 뒤 지시를 보냅니다.
+
+점군이 들어오면 수신 속도, 경과 시간과 좌표 이름이 표시됩니다. 수신이 멈추면 최신 점군을 기다리고, VLM 첨부 선택이 해제됩니다.
+
+**점군 수신 대기**가 계속되면 로봇을 연결한 상태에서 다음 명령을 실행합니다.
+
+```bash
+docker compose run --rm x2 doctor
+```
+
+다른 LiDAR 점군 토픽이 조회되면 화면의 **ROS 2 점군 토픽**에 해당 이름을 입력하고 **토픽 연결**을 누릅니다. 토픽이 없거나 발행자가 없다고 표시되면 장비 담당자와 로봇의 라이다 드라이버·센서 설정을 확인합니다.
 
 ## 참고 문서
 
 - 납품 문서: `AGIBOT_X2_데이터매니저_연동매뉴얼_공통_v1.0.pdf` — 전원·착석 준비 5쪽, 종료 14쪽.
 - [X2 Ultra t2d5 사용자 매뉴얼 v0.8.1](https://x2-aimdk.agibot.com/en/v0.8.1/_downloads/3d4e4f1753e055d54e7a7a19d6e524fb/x2_ultra_user_guide_t2.5_v0.8.1.pdf) — 의자 기립 24~26쪽, 착석 종료 34~35쪽, 충전 36~37쪽, 리모컨 39~44쪽. 그림은 제조사 사용자 매뉴얼과 AIMDK 하드웨어 안내를 참고했습니다.
+- [Docker Compose 실행](https://docs.docker.com/reference/cli/docker/compose/up/), [종료와 볼륨](https://docs.docker.com/reference/cli/docker/compose/down/), [파일 복사](https://docs.docker.com/reference/cli/docker/compose/cp/)
 - [프로젝트 README](../README.md)

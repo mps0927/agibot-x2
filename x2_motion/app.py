@@ -303,7 +303,7 @@ class X2Dashboard(Dashboard):
                     ident=uuid.uuid4().hex
                     self.lidar.request(ident)
                     await super().send(dict(action='lidar_frame_request',request_id=ident))
-            except (RuntimeError,OSError,asyncio.TimeoutError):
+            except (RuntimeError,OSError,asyncio.TimeoutError,asyncssh.Error):
                 self.lidar.pending=None
             await asyncio.sleep(.2)
 
