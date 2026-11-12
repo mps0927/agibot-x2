@@ -3,6 +3,7 @@ services:
   x2:
     image: agibot-x2:local
     build: .
+    command: ["serve"]
     init: true
     restart: on-failure:3
     stop_grace_period: 10s

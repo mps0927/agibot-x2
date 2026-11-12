@@ -18,6 +18,8 @@ class DirectRobotConnection(unittest.IsolatedAsyncioTestCase):
             async def fail():
                 attempts.append(1);raise asyncssh.ConnectionLost('local connection fixture')
             dashboard.connect_worker=fail
+            buffer=io.BytesIO();Image.new('RGB',(8,8),'blue').save(buffer,format='JPEG')
+            jpeg=buffer.getvalue();uploaded=dashboard.store_frame(jpeg,dict(source='Uploaded POV'))
             client=TestClient(TestServer(application));await client.start_server()
             try:
                 for _ in range(100):
@@ -25,7 +27,15 @@ class DirectRobotConnection(unittest.IsolatedAsyncioTestCase):
                     await asyncio.sleep(.01)
                 self.assertGreaterEqual(len(attempts),2)
                 self.assertFalse(dashboard.tasks[0].done());self.assertFalse(dashboard.state['connected'])
+                image=await self.client_frame(client,uploaded['url'])
+                self.assertEqual(image,jpeg)
             finally:await client.close()
+
+    @staticmethod
+    async def client_frame(client,url):
+        response=await client.get(url)
+        if response.status!=200:raise AssertionError('Uploaded image disappeared during connection retries')
+        return await response.read()
 
     async def test_this_host_deploys_worker_and_receives_state_and_rgb_over_one_ssh_connection(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -64,12 +74,19 @@ class DirectRobotConnection(unittest.IsolatedAsyncioTestCase):
                         allow_posture_actions=False,origin='',operator_ready=False,env_file=str(root/'empty.env'))
                     with patch('app.ssh_options',return_value=options):
                         application=create_app(args);dashboard=application['dashboard'];dashboard.capture_root=root/'captures'
+                        dashboard.reconnect_delay=.01;attempts=[];original_connect=dashboard.connect_worker
+                        async def connect_later():
+                            attempts.append(1)
+                            if len(attempts)<3:raise asyncssh.ConnectionLost('robot not plugged in yet')
+                            return await original_connect()
+                        dashboard.connect_worker=connect_later
                         client=TestClient(TestServer(application));await client.start_server()
                         try:
                             for _ in range(100):
                                 if dashboard.state.get('connected') and dashboard.latest_jpeg and dashboard.lidar.ready(True):break
                                 await asyncio.sleep(.02)
                             self.assertTrue(dashboard.state.get('connected'));self.assertEqual(dashboard.latest_jpeg,jpeg)
+                            self.assertGreaterEqual(len(attempts),3);self.assertFalse(dashboard.state['armed'])
                             ws=await client.ws_connect('/ws',headers={'Origin':str(client.make_url('/')).rstrip('/')})
                             live_state=await ws.receive_json()
                             self.assertTrue(live_state['connected'])

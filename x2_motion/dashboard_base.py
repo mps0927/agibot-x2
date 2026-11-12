@@ -82,19 +82,27 @@ class Dashboard:
         await self.broadcast()
 
     async def maintain_worker(self):
+        last_failure=None
         while not self.closing:
-            await self.invalidate_connection()
             readers = []
             process = None
             try:
-                process = self.process = await self.connect_worker()
+                process = await self.connect_worker()
+                # Invalidate once when a robot session starts, rather than on
+                # every failed attempt while users test with uploaded images.
+                await self.invalidate_connection()
+                self.process = process
+                last_failure=None
                 readers = [asyncio.create_task(self.read_worker(process)),
                            asyncio.create_task(self.read_errors(process))]
                 await readers[0]
             except asyncio.CancelledError:
                 raise
             except (OSError, RuntimeError, asyncssh.Error) as exc:
-                print("X2 connection:", str(exc), flush=True)
+                failure=(type(exc).__name__,str(exc))
+                if failure!=last_failure:
+                    print("X2 연결 대기:",str(exc) or type(exc).__name__,flush=True)
+                last_failure=failure
             finally:
                 for task in readers:
                     task.cancel()
@@ -107,7 +115,8 @@ class Dashboard:
                     await process.wait()
                 if self.process is process:
                     self.process = None
-                await self.invalidate_connection()
+                if process is not None:
+                    await self.invalidate_connection()
             if not self.closing:
                 await asyncio.sleep(self.reconnect_delay)
 

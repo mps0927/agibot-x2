@@ -1,3 +1,0 @@
-services:
-  x2:
-    command: ["serve", "--offline"]
