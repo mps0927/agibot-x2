@@ -35,10 +35,25 @@ cd agibot-x2
 cp .env.example .env
 ```
 
-`.env`에 로봇 SSH 비밀번호와 OpenRouter 키를 입력하고 PC와 로봇을 LAN으로 연결한다. 기존 `.env`가 있으면 그대로 사용한다. 최초에는 이미지를 만들고 로봇의 SSH 호스트 키 지문을 확인해 등록한다.
+기존 `.env`가 있으면 그대로 사용한다. VLM 분석을 사용할 때는 OpenRouter 키를 입력한다. 먼저 이미지를 만든다.
 
 ```bash
 docker compose build
+```
+
+**로봇 없이 대시보드 테스트**
+
+```bash
+docker compose -f compose.yaml -f compose.offline.yaml up -d
+```
+
+같은 PC의 [대시보드](http://127.0.0.1:8766)에서 화면·이미지 업로드·VLM 분석을 테스트한다. 이 모드에서는 로봇에 접속하지 않으며 제어 버튼은 비활성화된다. 로봇 SSH 접속 정보와 호스트 키 등록은 실물 연결할 때 준비한다.
+
+**실물 로봇 연결**
+
+`.env`에 로봇 SSH 비밀번호를 입력하고 PC와 로봇을 LAN으로 연결한다. 처음 연결하는 경우 로봇의 SSH 호스트 키 지문을 확인해 등록한다.
+
+```bash
 docker compose run --rm x2 trust-host
 docker compose run --rm x2 doctor
 docker compose up -d
