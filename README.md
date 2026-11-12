@@ -25,6 +25,37 @@ Windows, Linux(DGX Spark 포함), macOS에서 **같은 스크립트 `./start_fie
 
 ## 빠른 시작
 
+### Docker로 실행
+
+각 Windows PC, DGX Spark, Mac에서 Docker를 설치하고, 로봇을 사용할 기기에 이 저장소를 내려받는다. Windows와 Mac에서는 Docker Desktop을 먼저 실행한다.
+
+```bash
+git clone https://github.com/mps0927/agibot-x2.git
+cd agibot-x2
+cp .env.example .env
+```
+
+`.env`에 로봇 SSH 비밀번호와 OpenRouter 키를 입력하고 PC와 로봇을 LAN으로 연결한다. 기존 `.env`가 있으면 그대로 사용한다. 최초에는 이미지를 만들고 로봇의 SSH 호스트 키 지문을 확인해 등록한다.
+
+```bash
+docker compose build
+docker compose run --rm x2 trust-host
+docker compose run --rm x2 doctor
+docker compose up -d
+```
+
+같은 기기의 브라우저에서 [대시보드](http://127.0.0.1:8766)를 연다. 다음부터는 `docker compose up -d`로 시작한다. 라이다는 로봇이 공식 점군 토픽을 발행하면 자동으로 연결된다.
+
+```bash
+docker compose ps
+docker compose logs --tail 100 x2
+docker compose down
+```
+
+종료해도 Docker 볼륨에 촬영 자료와 VLM 기록이 남는다. 설정을 변경한 경우 `docker compose up -d --force-recreate`로 다시 실행한다. 개인 키로 접속할 때는 `X2_HOST_SSH_KEY`에 호스트 키 파일 경로를 지정하고 모든 Compose 명령에 `-f compose.yaml -f compose.ssh-key.yaml`을 추가한다.
+
+### Python 스크립트로 실행
+
 처음 사용하는 경우 [대시보드 사용설명서](docs/USER_GUIDE_KO.md)의 전원 켜기와 LAN 연결부터 진행한다. 아래 명령은 로봇을 사용할 PC에서 실행한다.
 
 Python 3.10 이상과 Git, Bash가 필요하다. Windows에서는 Git Bash를 연다. 기존 Python으로 프로젝트 전용 `.venv`를 만들고, 이후에는 같은 환경과 패키지를 재사용한다. 명령은 한 줄씩 복사해 붙여 넣고 Enter를 누른다.
@@ -112,7 +143,7 @@ agibot-x2/
 - 매 VLM 요청의 입력 사진·지시·요청·응답·실행 피드백은 로컬 `x2_motion/artifacts/vlm_runs/`에 저장한다. API 키는 기록하지 않는다.
 - OpenRouter에서 이미지 입력을 지원하는 실시간 채팅 모델을 불러와 검색·선택할 수 있다. 선택은 같은 브라우저에 유지되며 다음 VLM 요청에 적용된다.
 - 전면 RGB 미리보기는 30fps 고정이며 실제 수신 속도는 환경에 따라 달라진다.
-- 직접 관절 목표는 미리보기까지 제공한다. LiDAR 표준 점군 수신은 아직 검증하지 않았다.
+- 직접 관절 목표는 미리보기까지 제공한다. LiDAR는 PC2의 표준 점군 토픽을 자동 구독하며, 실제 기기에서 점군 발행과 수신을 확인해야 한다.
 
 상세 매핑과 조건은 [SDK_MAPPING.md](docs/SDK_MAPPING.md), 현장 실행 순서는 [OPERATIONS.md](docs/OPERATIONS.md), 검증 범위는 [VERIFICATION.md](VERIFICATION.md)를 참고한다.
 

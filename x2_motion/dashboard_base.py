@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import time
 from urllib.parse import urlsplit
@@ -50,7 +51,8 @@ class Dashboard:
         self.closing = False
         self.reconnect_delay = 3.
         self.pipeline_status = dict(stage="idle", message="지시를 입력하고 분석 또는 실행을 선택하세요.")
-        self.capture_root = ROOT / "artifacts" / "camera_captures"
+        self.artifact_root = Path(os.environ.get('X2_DATA_DIR',str(ROOT))) / 'artifacts'
+        self.capture_root = self.artifact_root / "camera_captures"
 
     async def progress(self, stage, message, **details):
         self.pipeline_status = dict(stage=stage, message=message, at=time.time(), **details)
@@ -151,10 +153,14 @@ class Dashboard:
                 if data.get("type") == "camera_frame":
                     self.accept_camera(data)
                     continue
+                if data.get("type") == "lidar_frame":
+                    self.accept_lidar(data)
+                    continue
                 if data.get("type") == "state":
                     self.state = dict(data, connected=True)
                     self.state_at = time.monotonic()
                 else:
+                    if hasattr(self,'lidar_event'):self.lidar_event(data)
                     self.events.append(dict(data, local_at=time.time()))
                     if getattr(self,'active_run_manifest',None):
                         self.append_capture_event(self.active_run_manifest,'worker_feedback',feedback=data)
@@ -512,15 +518,21 @@ class Dashboard:
             raise ValueError("관점 이미지를 새로 선택하거나 RGB 프레임을 다시 캡처하세요.")
         if not frame:
             frame=dict(jpeg=None,meta=dict(source="Text only",image_available=False,captured_at=time.time()),created=time.monotonic())
-        try:recording=begin_run(getattr(self.args,'vlm_record_root',HERE/'artifacts'/'vlm_runs'),frame,data)
+        lidar_frame = self.lidar.snapshot(self.sensor_connected()) if data.get('include_lidar') is True else None
+        lidar = self.lidar.observation(self.sensor_connected()) if lidar_frame else {'enabled':False}
+        try:recording=begin_run(getattr(self.args,'vlm_record_root',self.artifact_root/'vlm_runs'),frame,data)
         except OSError as e:raise RuntimeError('VLM 입력 기록을 저장하지 못했습니다. 저장 공간과 권한을 확인하세요.') from e
         frame=dict(frame,meta=dict(frame['meta'],local_manifest_path=recording['manifest_path'],vlm_run_id=recording['run_id']))
         fsm = self.state.get("fsm")
         sdk_version=self.state.get('sdk_version')
         profile=dict(self.state.get("profile",DEFAULT_PROFILE))
-        lidar = {"enabled":False}
-        if data.get("include_lidar") is True:
-            raise ValueError("현재 X2에서 수신된 LiDAR 점군이 없습니다.")
+        if lidar['enabled']:
+            save_json(Path(recording['directory'])/'lidar_input.json',lidar)
+            save_json(Path(recording['directory'])/'lidar_frame.json',lidar_frame)
+            manifest_path=Path(recording['manifest_path'])
+            manifest=json.loads(manifest_path.read_text(encoding='utf-8'))
+            manifest.update(lidar_input_file='lidar_input.json',lidar_frame_file='lidar_frame.json')
+            save_json(manifest_path,manifest)
         async with self.infer_lock:
             await self.progress("inference", "텍스트와 선택한 관점 이미지를 VLM에 전달했습니다.",
                                 model=data.get("model") or self.pipeline.model)

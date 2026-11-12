@@ -66,6 +66,21 @@ class RecordAndRoute(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(json.loads((folder/'instruction.json').read_text(encoding='utf-8'))['instruction'],'관찰만')
         self.assertNotEqual(*recordings);self.assertEqual(self.sent,[])
 
+    async def test_lidar_input_and_sample_match_the_sent_observation(self):
+        self.d.lidar.request('test-request')
+        self.d.accept_lidar(dict(topic=self.d.lidar.topic,frame_request_id='test-request',frame_id='lidar_chest_front',
+            stamp=dict(sec=1,nanosec=0),generation=4,sequence=9,points_total=2,points=[[1.,2.,3.],[4.,5.,6.]],source_age_ms=0))
+        response=await self.client.post('/api/infer',json=dict(instruction='관찰만',include_lidar=True),headers={'Origin':self.origin})
+        result=await response.json();self.assertEqual(response.status,200,result)
+        folder=Path(result['recording']['directory'])
+        saved=json.loads((folder/'lidar_input.json').read_text(encoding='utf-8'))
+        sample=json.loads((folder/'lidar_frame.json').read_text(encoding='utf-8'))
+        manifest=json.loads((folder/'run_manifest.json').read_text(encoding='utf-8'))
+        self.assertEqual(self.provider_input['robot_state']['lidar'],saved)
+        self.assertEqual((saved['generation'],saved['sequence']),(sample['generation'],sample['sequence']))
+        self.assertEqual(saved['session_id'],sample['session_id'])
+        self.assertEqual(manifest['lidar_frame_file'],'lidar_frame.json')
+
 class ReplayMode(unittest.IsolatedAsyncioTestCase):
     async def test_saved_vision_is_usable_without_ssh_or_hardware_permissions(self):
         with tempfile.TemporaryDirectory() as tmp:

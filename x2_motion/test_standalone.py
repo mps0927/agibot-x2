@@ -43,7 +43,12 @@ class DirectRobotConnection(unittest.IsolatedAsyncioTestCase):
                     frame_id='test-camera',source_hz=30,preview_fps=30)
                 worker.stdout.write((json.dumps(state)+'\n'+json.dumps(camera)+'\n').encode())
                 async for line in worker.stdin:
-                    received.append(json.loads(line))
+                    command=json.loads(line);received.append(command)
+                    if command.get('action')=='lidar_frame_request':
+                        frame=dict(type='lidar_frame',topic='/aima/hal/sensor/lidar_chest_front/lidar_pointcloud',
+                            frame_request_id=command['request_id'],frame_id='lidar_chest_front',sequence=1,generation=1,
+                            stamp=dict(sec=1,nanosec=0),points_total=1,points=[[1.,2.,3.]],source_age_ms=0)
+                        worker.stdout.write((json.dumps(frame)+'\n').encode())
                 worker.exit(0)
             server=await asyncssh.create_server(Robot,'127.0.0.1',0,server_host_keys=[key],process_factory=process,
                 sftp_factory=lambda channel:asyncssh.SFTPServer(channel,chroot=directory),encoding=None)
@@ -62,7 +67,7 @@ class DirectRobotConnection(unittest.IsolatedAsyncioTestCase):
                         client=TestClient(TestServer(application));await client.start_server()
                         try:
                             for _ in range(100):
-                                if dashboard.state.get('connected') and dashboard.latest_jpeg:break
+                                if dashboard.state.get('connected') and dashboard.latest_jpeg and dashboard.lidar.ready(True):break
                                 await asyncio.sleep(.02)
                             self.assertTrue(dashboard.state.get('connected'));self.assertEqual(dashboard.latest_jpeg,jpeg)
                             ws=await client.ws_connect('/ws',headers={'Origin':str(client.make_url('/')).rstrip('/')})
@@ -74,7 +79,10 @@ class DirectRobotConnection(unittest.IsolatedAsyncioTestCase):
                             config=await (await client.get('/api/config')).json()
                             self.assertEqual(config['mode'],'ssh-direct');self.assertEqual(config['robot'],'127.0.0.1')
                             response=await client.post('/api/capture',json={},headers={'Origin':str(client.make_url('/')).rstrip('/')})
-                            self.assertEqual(response.status,200);self.assertEqual(len(commands),1);self.assertEqual(received,[])
+                            self.assertEqual(response.status,200);self.assertEqual(len(commands),1)
+                            self.assertTrue(received);self.assertTrue(all(x['action']=='lidar_frame_request' for x in received))
+                            frame=await (await client.get('/api/lidar/frame')).json()
+                            self.assertEqual(frame['points'],[[1.,2.,3.]])
                             self.assertIn('/home/robot/aimdk/install/setup.bash',commands[0])
                             self.assertIn('X2_ALLOW_CONTROL=0',commands[0])
                             deployed=root/'home/robot/agibot_dashboard'
@@ -99,6 +107,18 @@ class LocalBoundary(unittest.IsolatedAsyncioTestCase):
         with patch.object(self.d.session,'get',Mock(side_effect=AssertionError('Unexpected sidecar connection'))) as get:
             response=await self.client.post('/api/infer',json={'instruction':'관찰','include_lidar':True},headers={'Origin':self.origin})
             self.assertEqual(response.status,400);self.assertIn('LiDAR',(await response.json())['error']);get.assert_not_called()
+    async def test_lidar_topic_is_changed_only_after_worker_accepts(self):
+        old=self.d.lidar.topic;target='/sensor/lidar/points'
+        self.d.state.update(connected=True);self.d.state_at=time.monotonic()
+        self.d.state['lidar']={'available_topics':[target]}
+        async def reject(msg):self.d.lidar_event(dict(event='lidar_subscription_error',request_id=msg['request_id'],error='failed'))
+        self.d.send=reject
+        response=await self.client.post('/api/lidar/topic',json={'topic':target},headers={'Origin':self.origin})
+        self.assertEqual(response.status,400);self.assertEqual(self.d.lidar.topic,old)
+        async def accept(msg):self.d.lidar_event(dict(event='lidar_subscription',request_id=msg['request_id']))
+        self.d.send=accept
+        response=await self.client.post('/api/lidar/topic',json={'topic':target},headers={'Origin':self.origin})
+        self.assertEqual(response.status,200);self.assertEqual(self.d.lidar.topic,target)
     async def test_old_joint_environment_flags_cannot_enable_a_foreign_adapter(self):
         settings={name:'1' for name in ('X2_ALLOW_FIELD','X2_ALLOW_JOINT_POSE','X2_ALLOW_WHOLE_BODY_JOINT_POSE','X2_ALLOW_ROS2_CONTROL')}
         with patch.dict(os.environ,settings):

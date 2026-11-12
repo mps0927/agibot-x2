@@ -16,6 +16,7 @@ from capabilities import DEFAULT_PROFILE, DIRECTIONS, MODES, PRESETS, validate_p
 from control_policy import permissions, command_allowed, MC_REJECTIONS,seat_hold_check,SEAT_MODE,active_locomotion_allowed
 from posture_actions import POSTURES,validate_posture_request,prepare_posture_request
 from sdk_catalog import READ_QUERIES
+from lidar import CloudRelay,DEFAULT_TOPIC,validate_topic
 
 
 def finish_native_request(state,context,code,sdk_state,service,event):
@@ -44,7 +45,7 @@ def main():
     output_wake=threading.Event()
     def emit(value):
         line=json.dumps(value,ensure_ascii=False,separators=(',',':'),allow_nan=False)+'\n'
-        if value.get('type') in ('state','camera_frame'):
+        if value.get('type') in ('state','camera_frame','lidar_frame'):
             with output_lock:output_latest[value['type']]=line
         else:
             try:output_events.put_nowait(line)
@@ -56,7 +57,7 @@ def main():
                 output_wake.wait(.05);output_wake.clear()
                 while not output_events.empty():output.write(output_events.get_nowait())
                 with output_lock:
-                    lines=[output_latest.pop(k) for k in ('state','camera_frame') if k in output_latest]
+                    lines=[output_latest.pop(k) for k in ('state','camera_frame','lidar_frame') if k in output_latest]
                 for line in lines:output.write(line)
         except (BrokenPipeError,OSError):stop.set()
     threading.Thread(target=write_output,daemon=True).start()
@@ -73,11 +74,11 @@ def main():
     threading.Thread(target=read_input,daemon=True).start()
 
     import rclpy
-    from rclpy.qos import qos_profile_sensor_data
+    from rclpy.qos import qos_profile_sensor_data,QoSProfile,ReliabilityPolicy,DurabilityPolicy
     from rosidl_runtime_py.convert import message_to_ordereddict as asdict
     from aimdk_msgs.srv import GetMcAction, GetAllJointState, GetRobotResources
     from aimdk_msgs.msg import JointStateArray, HandStateArray, PmuState
-    from sensor_msgs.msg import CompressedImage, Imu
+    from sensor_msgs.msg import CompressedImage, Imu, PointCloud2
     scopes=permissions(os.environ.get('X2_ALLOW_CONTROL')=='1',os.environ.get('X2_ALLOW_PRESETS')=='1',os.environ.get('X2_ALLOW_SEAT_HOLD')=='1',os.environ.get('X2_ALLOW_POSTURES')=='1')
     enabled=any(scopes.values())
     from aimdk_msgs.srv import SetMcPresetMotion
@@ -194,6 +195,46 @@ def main():
             stop.wait(max(.001,1/snapshot['fps']-(time.monotonic()-began)))
     threading.Thread(target=send_camera,daemon=True).start()
 
+    lidar=CloudRelay(os.environ.get('X2_LIDAR_TOPIC',DEFAULT_TOPIC))
+    lidar_subscription=None
+    # BEST_EFFORT/VOLATILE accepts both reliable/transient-local vendor streams
+    # and SensorDataQoS streams. Depth 1 prevents an old-cloud backlog.
+    lidar_qos=QoSProfile(depth=1,reliability=ReliabilityPolicy.BEST_EFFORT,durability=DurabilityPolicy.VOLATILE)
+    def select_lidar(selected,request_id=None):
+        nonlocal lidar_subscription
+        selected=validate_topic(selected)
+        known=dict(node.get_topic_names_and_types()).get(selected,[])
+        if known and known!=['sensor_msgs/msg/PointCloud2']:
+            raise ValueError('선택한 토픽의 메시지가 PointCloud2가 아닙니다.')
+        generation=lidar.generation+1
+        subscription=node.create_subscription(PointCloud2,selected,lambda m,g=generation:lidar.offer(m,g),lidar_qos)
+        lidar.select(selected)
+        previous=lidar_subscription;lidar_subscription=subscription
+        if previous is not None:node.destroy_subscription(previous)
+        event('lidar_subscription',topic=selected,generation=generation,request_id=request_id,control_request_sent=False)
+    try:select_lidar(lidar.topic)
+    except Exception as exc:
+        with lidar.lock:lidar.error=str(exc)
+    def send_lidar():
+        while not stop.is_set():
+            try:
+                frame=lidar.take_frame()
+                if frame is not None:
+                    while len(json.dumps(frame,separators=(',',':')).encode())>128*1024 and len(frame['points'])>1:
+                        frame['points']=frame['points'][::2]
+                    emit(frame)
+            except Exception as exc:
+                with lidar.lock:lidar.error=str(exc)
+            stop.wait(.2)
+    lidar_thread=threading.Thread(target=send_lidar,daemon=True);lidar_thread.start()
+    lidar_graph=dict(available_topics=[],publishers=0)
+    def inspect_lidar():
+        try:
+            lidar_graph.update(available_topics=[name for name,types in node.get_topic_names_and_types()
+                if 'sensor_msgs/msg/PointCloud2' in types and 'lidar' in name.lower()],
+                publishers=node.count_publishers(lidar.topic))
+        except Exception as exc:lidar_graph['graph_error']=str(exc)
+
     # Creating mutation clients and a publisher is deferred until explicit
     # --allow-control startup. Registration is deferred again until operator arm.
     if scopes['presets']:
@@ -265,6 +306,11 @@ def main():
             seen_ids.add(ident)
         action=msg.get('action')
         if not command_allowed(action,scopes,msg.get('mode')):raise ValueError('대시보드 실행 권한 잠금: '+str(action))
+        if action=='lidar_frame_request':lidar.request(ident);return
+        if action=='lidar_topic':
+            try:select_lidar(msg.get('topic'),ident);inspect_lidar()
+            except Exception as exc:event('lidar_subscription_error',request_id=ident,error=str(exc))
+            return
         if action=='configure':state['profile']=validate_profile(msg.get('profile'));return
         if action in ('stop','release','disarm'):
             release(action!='release');return
@@ -378,6 +424,7 @@ def main():
                 for name in READ_QUERIES:
                     if name in clients:query(name)
                 state['sdk_services']={name:client.service_is_ready() for name,client in clients.items()}
+                inspect_lidar()
                 next_diagnostics=now+5
             while not incoming.empty():
                 try:handle(incoming.get_nowait())
@@ -393,12 +440,14 @@ def main():
                 release(False);must_release=True;state['must_release']=True
             if any(desired) and now>=next_velocity:publish_velocity(desired);next_velocity=now+.02
             if now>=next_state:
+                state['lidar']=dict(lidar.status(),**lidar_graph)
                 state['camera_age_ms']=int((now-camera['at'])*1000) if camera['at'] else None
                 state['mode_age_ms']=int((now-mode_at)*1000) if mode_at else None
                 state['leg_age_ms']=int((now-leg_at)*1000) if leg_at else None
                 state['camera_source_hz']=camera['source_hz'];state['camera_preview_fps']=camera['fps']
                 emit(state);next_state=now+.25
     finally:
+        stop.set();lidar_thread.join(timeout=1)
         if any(desired):publish_velocity([0.,0.,0.])
         event('worker_exit',control_requests_sent=state['control_requests_sent'],velocity_publications=state['velocity_publications'])
         node.destroy_node();rclpy.shutdown()

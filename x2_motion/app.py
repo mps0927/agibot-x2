@@ -26,6 +26,7 @@ from posture_actions import posture_guide,validate_posture_request,POSTURES
 from vlm_recording import save_json
 from configuration import ROOT,DEFAULT_PORT,load_config,remote_paths,ssh_options
 from model_catalog import OpenRouterModels
+from lidar import CloudCache,DEFAULT_TOPIC,validate_topic,FRESH_MS
 
 HERE = Path(__file__).parent.resolve()
 
@@ -54,6 +55,9 @@ class X2Dashboard(Dashboard):
         load_config(env_file)
         super().__init__(args)
         self.model_catalog=OpenRouterModels()
+        self.lidar=CloudCache()
+        self.lidar_session=uuid.uuid4().hex
+        self.lidar_subscriptions={}
         self.scopes=permissions(getattr(args,'allow_control',False),getattr(args,'allow_presets',False),getattr(args,'allow_seat_hold',False),getattr(args,'allow_posture_actions',False))
         args.read_only=not any(self.scopes.values())
         self.camera_fps=30
@@ -70,6 +74,7 @@ class X2Dashboard(Dashboard):
 
     async def start(self,application):
         await super().start(application)
+        if not getattr(self.args,'offline',False):self.tasks.append(asyncio.create_task(self.poll_lidar()))
         replay=getattr(self.args,'replay',None)
         if not replay:return
         root=Path(replay)
@@ -87,7 +92,7 @@ class X2Dashboard(Dashboard):
     async def connect_worker(self):
         connection=await asyncssh.connect(**ssh_options())
         remote_home,remote_sdk=remote_paths();remote_worker=remote_home+'/agibot_dashboard'
-        flags=f"X2_ALLOW_CONTROL={int(self.scopes['movement'])} X2_ALLOW_PRESETS={int(self.scopes['presets'])} X2_ALLOW_SEAT_HOLD={int(self.scopes['seat_hold'])} X2_ALLOW_POSTURES={int(self.scopes['posture_actions'])}"
+        flags=f"X2_ALLOW_CONTROL={int(self.scopes['movement'])} X2_ALLOW_PRESETS={int(self.scopes['presets'])} X2_ALLOW_SEAT_HOLD={int(self.scopes['seat_hold'])} X2_ALLOW_POSTURES={int(self.scopes['posture_actions'])} X2_LIDAR_TOPIC="+shlex.quote(self.lidar.topic)
         command='set -e\nsource /opt/ros/humble/setup.bash\nsource '+shlex.quote(remote_sdk+'/install/setup.bash')+'\nexec env PYTHONUNBUFFERED=1 X2_SDK_ROOT='+shlex.quote(remote_sdk)+' '+flags+' python3 '+shlex.quote(remote_worker+'/x2_worker.py')
         try:
             await install_worker(connection,HERE,target=remote_worker)
@@ -97,6 +102,8 @@ class X2Dashboard(Dashboard):
         return RemoteProcess(connection,process)
 
     async def invalidate_connection(self):
+        self.lidar.clear()
+        self.lidar_session=uuid.uuid4().hex
         self.latest_jpeg=None
         self.preview_jpeg=None
         self.camera_arrivals.clear();self.preview_arrivals.clear()
@@ -260,21 +267,64 @@ class X2Dashboard(Dashboard):
             control_request_sent=True,message=POSTURES[name]['label']+' SDK 요청을 한 번 전송했습니다. 현재 모드와 실제 자세를 확인하세요.'),status=202)
 
     async def lidar_status(self,request):
-        evidence={}
-        for name in ('lidar-live-inspection.json','lidar-network-inspection.json'):
-            path=HERE/'inspection'/name
-            if path.exists():
-                try:evidence[name]=json.loads(path.read_text(encoding='utf-8-sig'))
-                except (ValueError,OSError):pass
-        return web.json_response(dict(connected=bool(self.state.get('connected')),ready=False,
-            sensor=dict(model='RoboSense E1R',presence='X2_ULTRA_VENDOR_SPEC',
-                network_observed=bool(evidence.get('lidar-network-inspection.json',{}).get('lidar_udp_bindings'))),
-            expected_topic='/aima/hal/sensor/lidar_chest_front/lidar_pointcloud',inspection=evidence,
-            error='X2 Ultra 사양에는 가슴 전면 E1R 라이다가 있습니다. 센서망 수신·전용 UDP 포트 사용은 확인했지만, 표준 PointCloud2 토픽과 실제 점군은 아직 수신하지 못했습니다.'))
+        connected=self.sensor_connected();ready=self.lidar.ready(connected)
+        metadata=self.state.get('lidar',{})
+        if metadata.get('topic')!=self.lidar.topic:metadata={}
+        frame=self.lidar.frame or {}
+        if not connected:error='로봇 전원과 LAN 연결을 확인하세요. 연결되면 라이다 점군을 자동 구독합니다.'
+        elif metadata.get('error'):error=metadata['error']
+        elif self.lidar.age_ms() is not None and self.lidar.age_ms()>=FRESH_MS:error='라이다 점군 수신이 멈췄습니다. 센서 발행 상태를 확인하세요.'
+        elif self.lidar.frame is not None and not frame.get('points'):error='점군은 수신했지만 표시할 유효 XYZ 좌표가 없습니다.'
+        elif metadata.get('publishers')==0:error='로봇 SDK에서 이 점군 토픽을 발행하지 않습니다. 로봇의 라이다 드라이버·센서 설정 확인이 필요합니다.'
+        else:error='로봇에서 PointCloud2 점군을 기다리는 중입니다.'
+        return web.json_response(dict(connected=connected,ready=ready,topic=self.lidar.topic,
+            expected_topic=DEFAULT_TOPIC,sensor=dict(model='RoboSense E1R',presence='X2_ULTRA_VENDOR_SPEC'),
+            available_topics=metadata.get('available_topics',[]),publishers=metadata.get('publishers'),
+            source_hz=metadata.get('source_hz',0),preview_hz_limit=5,age_ms=self.lidar.age_ms(),
+            frame_id=frame.get('frame_id'),points_total=frame.get('points_total',0),
+            sampled_points=len(frame.get('points',[])),error='' if ready else error))
+
+    def sensor_connected(self):
+        return bool(self.state.get('connected') and self.state_at and (time.monotonic()-self.state_at)*1000<FRESH_MS)
+
+    def accept_lidar(self,data):
+        self.lidar.accept(dict(data,session_id=self.lidar_session))
+
+    def lidar_event(self,data):
+        if data.get('event') not in ('lidar_subscription','lidar_subscription_error'):return
+        future=self.lidar_subscriptions.get(data.get('request_id'))
+        if future and not future.done():future.set_result(data)
+
+    async def poll_lidar(self):
+        while not self.closing:
+            try:
+                pending=self.lidar.pending
+                if self.sensor_connected() and (not pending or time.monotonic()-pending[1]>=FRESH_MS/1000):
+                    ident=uuid.uuid4().hex
+                    self.lidar.request(ident)
+                    await super().send(dict(action='lidar_frame_request',request_id=ident))
+            except (RuntimeError,OSError,asyncio.TimeoutError):
+                self.lidar.pending=None
+            await asyncio.sleep(.2)
+
+    def lidar_observation(self):
+        return self.lidar.observation(self.sensor_connected())
+
     async def lidar_frame(self,request):
-        raise ValueError('수신된 LiDAR 점군이 없습니다.')
+        return web.json_response(self.lidar.snapshot(self.sensor_connected()))
     async def lidar_topic(self,request):
-        raise ValueError('현재 대시보드는 점군 상태 조회만 제공합니다.')
+        data=await request.json();topic=validate_topic(data.get('topic'))
+        if not self.sensor_connected():raise ValueError('로봇이 연결되면 점군 토픽을 선택할 수 있습니다.')
+        candidates=self.state.get('lidar',{}).get('available_topics',[])
+        if topic!=DEFAULT_TOPIC and topic not in candidates:raise ValueError('조회된 LiDAR 점군 토픽을 선택하세요.')
+        ident=uuid.uuid4().hex;future=asyncio.get_running_loop().create_future();self.lidar_subscriptions[ident]=future
+        try:
+            await self.send(dict(action='lidar_topic',topic=topic,request_id=ident))
+            result=await asyncio.wait_for(future,3)
+            if result.get('event')!='lidar_subscription':raise ValueError(result.get('error') or '점군 구독을 변경하지 못했습니다.')
+            self.lidar.select(topic)
+        finally:self.lidar_subscriptions.pop(ident,None)
+        return web.json_response(dict(status='SUBSCRIBED',topic=topic,control_request_sent=False))
 
     async def infer(self,request):
         response=await super().infer(request)
@@ -336,6 +386,7 @@ def parse_args(argv=None):
     config_args,_=config_parser.parse_known_args(argv);load_config(config_args.env_file)
     parser=argparse.ArgumentParser(description='AGIBOT X2 dashboard; read-only by default')
     parser.add_argument('--port',type=int,default=int(os.environ.get('X2_PORT',DEFAULT_PORT)))
+    parser.add_argument('--bind',choices=('127.0.0.1','0.0.0.0'),default=os.environ.get('X2_BIND','127.0.0.1'))
     parser.add_argument('--instance-id',default=uuid.uuid4().hex,help=argparse.SUPPRESS)
     parser.add_argument('--allow-control',action='store_true',help='Enable explicit operator requests; never performs startup motion')
     parser.add_argument('--allow-presets',action='store_true',help='Allow operator presets without enabling locomotion or general mode switches')
@@ -355,4 +406,4 @@ def parse_args(argv=None):
 
 if __name__=='__main__':
     args=parse_args()
-    web.run_app(create_app(args),host='127.0.0.1',port=args.port,access_log=None,shutdown_timeout=3)
+    web.run_app(create_app(args),host=args.bind,port=args.port,access_log=None,shutdown_timeout=3)

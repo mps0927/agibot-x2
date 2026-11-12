@@ -1,0 +1,9 @@
+services:
+  x2:
+    environment:
+      X2_SSH_KEY: /run/x2/robot_key
+    secrets:
+      - robot_key
+secrets:
+  robot_key:
+    file: ${X2_HOST_SSH_KEY:?Set X2_HOST_SSH_KEY to the host private key path}

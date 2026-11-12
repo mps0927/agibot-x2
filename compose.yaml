@@ -1,0 +1,38 @@
+name: agibot-x2
+services:
+  x2:
+    image: agibot-x2:local
+    build: .
+    init: true
+    restart: on-failure:3
+    stop_grace_period: 10s
+    ports:
+      - "127.0.0.1:8766:8766"
+    environment:
+      X2_BIND: 0.0.0.0
+      X2_PORT: "8766"
+      X2_DATA_DIR: /data
+      X2_ENV_FILE: /run/x2/config.env
+      X2_SSH_KNOWN_HOSTS: /data/ssh/known_hosts
+      X2_SSH_KEY: ""
+    secrets:
+      - x2_config
+    volumes:
+      - x2_data:/data
+    tmpfs:
+      - /run/x2:mode=0700
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8766/api/config', timeout=2).close()"]
+      interval: 15s
+      timeout: 3s
+      retries: 3
+    logging:
+      options:
+        max-size: 10m
+        max-file: "3"
+secrets:
+  x2_config:
+    file: ./.env
+volumes:
+  x2_data:
+    name: agibot-x2-data

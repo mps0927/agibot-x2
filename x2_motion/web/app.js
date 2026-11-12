@@ -192,20 +192,20 @@ function drawLidar(cloud){
   for(let r=1;r<=5;r++){ctx.beginPath();ctx.arc(w/2,h/2,r*scale,0,Math.PI*2);ctx.stroke();}
   ctx.beginPath();ctx.moveTo(w/2,0);ctx.lineTo(w/2,h);ctx.moveTo(0,h/2);ctx.lineTo(w,h/2);ctx.stroke();
   ctx.fillStyle='#17314a';ctx.font='12px Consolas';ctx.fillText('센서 좌표 XY · 1m / ring',12,20);
-  if(!cloud){ctx.fillText('점군 수신 대기 · ROS 2 PointCloud2 브리지가 필요합니다.',24,h/2-10);return;}
+  if(!cloud){ctx.fillText('라이다 점군 수신 대기',24,h/2-10);return;}
   ctx.fillStyle='#2459d4';for(const p of cloud.points||[]){if(p.length>=3&&p.every(Number.isFinite))ctx.fillRect(w/2+p[0]*scale,h/2-p[1]*scale,2,2);}
   ctx.fillStyle='#ad352b';ctx.beginPath();ctx.arc(w/2,h/2,4,0,Math.PI*2);ctx.fill();
   ctx.fillStyle='#17314a';ctx.fillText(`${cloud.frame_id||'sensor'} · ${cloud.points_total||0} points · ${cloud.age_ms||0} ms`,12,h-12);
 }
 async function pollLidar(){
   try{const r=await fetch('/api/lidar/status'),v=await r.json();const ready=!!v.ready;
-    $('lidar-status').textContent=ready?'점군 수신 중':v.sensor?.network_observed?'라이다 연결 단서 확인 · 점군 대기':'점군 수신 확인 중';
+    $('lidar-status').textContent=ready?'점군 수신 중':v.connected?'점군 수신 대기':'로봇 연결 대기';
     $('lidar-status').className='badge '+(ready?'ok':'');
-    $('lidar-message').textContent=ready?`토픽 ${v.topic} · 좌표 ${v.frame_id||'미확인'} · ${v.age_ms}ms`:v.error||'ROS 2 점군을 기다리는 중입니다.';
+    $('lidar-message').textContent=ready?`토픽 ${v.topic} · 좌표 ${v.frame_id||'미확인'} · ${v.source_hz}Hz · ${v.age_ms}ms`:v.error||'ROS 2 점군을 기다리는 중입니다.';
     $('include-lidar').disabled=!ready;if(!ready)$('include-lidar').checked=false;
-    $('lidar-connect').disabled=!v.connected;$('lidar-connect').textContent=v.connected?'토픽 연결':'브리지 대기';
+    $('lidar-connect').disabled=!v.connected;$('lidar-connect').textContent=v.connected?'토픽 연결':'로봇 연결 대기';
     if(ready){const fr=await fetch('/api/lidar/frame');drawLidar(fr.ok?await fr.json():null);}else drawLidar(null);
-  }catch{drawLidar(null);}setTimeout(pollLidar,1500);
+  }catch{drawLidar(null);}setTimeout(pollLidar,document.hidden?3000:200);
 }
 $('lidar-connect').onclick=async()=>{try{await api('/api/lidar/topic',{topic:$('lidar-topic').value});notify('LiDAR 토픽 구독을 요청했습니다.');}catch(e){notify(e.message);}};
 function renderJointControls(){
