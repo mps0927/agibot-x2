@@ -386,6 +386,13 @@ artifacts/vlm_runs/<요청별 폴더>/
 
 오류가 발생한 요청은 `error.json`과 실행 로그를 함께 확인합니다. 복사를 마친 뒤 계속 사용하려면 `docker compose up -d`, 종료하려면 `docker compose down`을 실행합니다. 기록을 보관할 때는 `down`에 볼륨 삭제 옵션 `-v`를 붙이지 않습니다.
 
+<a id="prompt-experiments"></a>
+### 9.6 시스템 프롬프트를 바꿔 실험합니다
+
+실험자는 [기본 시스템 프롬프트](../x2_motion/prompts/x2_system_en.txt)를 수정해 역할·판단 규칙·설명 방식을 바꿀 수 있습니다. Docker에서는 파일을 저장한 뒤 조종과 VLM 요청을 마치고 `docker compose up -d --build`로 적용합니다.
+
+`시스템 프롬프트 · 요청 / 응답`에서 반영된 내용을 확인하고 `계획만 보기`로 비교합니다. 실제 요청에 사용한 프롬프트는 요청별 `model_request.json`에도 저장됩니다. 파일 열기·수정 예시·적용 확인은 [시스템 프롬프트 실험 안내](SYSTEM_PROMPT_KO.md)를 따릅니다.
+
 <a id="stop"></a>
 ## 10. 정지와 제어 해제
 

@@ -193,8 +193,31 @@ docker compose down
 
 오류 문구별 조치는 [연결 문제 해결](docs/FIRST_START_KO.md#errors)에 있습니다. `healthy`는 웹 서버가 응답한다는 뜻이며, 로봇 연결은 화면의 연결 표시와 최신 영상·상태로 확인합니다.
 
+<a id="system-prompt"></a>
+## 7. 실험용 시스템 프롬프트 변경
+
+**실험자는 시스템 프롬프트를 원하는 실험 목적에 맞게 수정할 수 있습니다.** 역할, 장면 해석 기준, 동작 선택 규칙, 설명 방식 등을 바꿔 모델의 응답을 비교할 수 있습니다.
+
+수정할 파일은 [x2_motion/prompts/x2_system_en.txt](x2_motion/prompts/x2_system_en.txt)입니다. UTF-8 텍스트로 편집하고 저장합니다.
+
+| 기기 | 프로젝트 폴더에서 파일 열기 |
+|---|---|
+| Windows | `notepad x2_motion/prompts/x2_system_en.txt` |
+| Mac | `open -e x2_motion/prompts/x2_system_en.txt` |
+| DGX Spark | `nano x2_motion/prompts/x2_system_en.txt` |
+
+Docker에서는 프롬프트가 이미지에 포함됩니다. 조종과 VLM 요청을 마친 뒤 수정본으로 다시 빌드해 적용합니다.
+
+```bash
+docker compose up -d --build
+```
+
+대시보드의 `시스템 프롬프트 · 요청 / 응답`을 펼쳐 반영된 내용을 확인하고, `계획만 보기`로 응답을 비교합니다. 프롬프트 뒤에는 로봇의 동작 목록과 현재 상태가 자동으로 붙습니다. 실행 코드의 명령 형식 검사·속도·시간·권한 조건은 별도로 적용됩니다.
+
+[시스템 프롬프트 실험 안내](docs/SYSTEM_PROMPT_KO.md)에 수정 예시, 적용 확인과 요청 기록 확인 방법이 있습니다.
+
 <a id="maintenance"></a>
-## 7. 설정 변경·업데이트
+## 8. 설정 변경·업데이트
 
 `.env`를 수정했다면 로봇 조작과 VLM 요청을 마친 뒤 적용합니다.
 
@@ -212,7 +235,7 @@ docker compose up -d --build
 
 기존 `.env`, 등록 키와 촬영 기록은 유지됩니다. 기록을 PC로 가져오는 방법은 [요청 기록 확인](docs/USER_GUIDE_KO.md#records)을 참고하세요.
 
-## 8. 자세한 사용설명서
+## 9. 자세한 사용설명서
 
 | 문서 | 내용 |
 |---|---|
@@ -221,5 +244,6 @@ docker compose up -d --build
 | [리모컨 사용설명서](docs/REMOTE_CONTROL_GUIDE_KO.md) | 리모컨 연결·버튼 조합·정지·종료 |
 | [현장 사용 순서](docs/OPERATIONS.md) | 설치를 마친 뒤 매일 확인할 시작·종료 순서 |
 | [카메라·센서 안내](docs/SENSORS.md) | 영상 선택·장치 상태·라이다 확인 |
+| [시스템 프롬프트 실험 안내](docs/SYSTEM_PROMPT_KO.md) | 프롬프트 수정·적용·응답 비교·실제 전송 기록 확인 |
 
 개발·Python 직접 실행은 [개발 안내](docs/DEVELOPMENT.md), 기능별 연결은 [SDK 매핑](docs/SDK_MAPPING.md)을 참고합니다. 조작 화면은 [Unitree G1 파이프라인](https://github.com/8l4nnk/unitree-g1-pipeline)과 구성을 맞췄으며, X2는 포트 `8766`을 사용합니다.
