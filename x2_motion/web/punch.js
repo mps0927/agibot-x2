@@ -1,4 +1,4 @@
-/* Authoring preview never publishes commands. Replay needs a live arm resource. */
+/* Local joint preset preview. Never substitute a same-named vendor resource. */
 (() => {
   let data=null,started=null,animation=null;
   const canvas=document.getElementById('punch-preview'),ctx=canvas.getContext('2d');
@@ -20,9 +20,9 @@
   }
   window.updatePunchControls=()=>{
     const button=document.getElementById('punch-execute');
-    const available=!!data?.replay_available&&!!state.connected;
-    button.hidden=!available;
-    button.disabled=!available||!state.ready||!config.control_permissions?.presets||!canExecute()||state.controller==='other'||!!state.gesture||!!state.moving||inFlight;
+    button.hidden=false;
+    button.disabled=true; // No MC-preserving joint transport is connected yet.
+    button.title=data?.registration?.block_reason||'프리셋 등록 상태를 확인 중입니다.';
   };
   async function refresh(){
     try{
@@ -37,11 +37,6 @@
     function tick(now){const at=Math.min(data.profile.seconds,(now-started)/1000);draw(at);
       if(at<data.profile.seconds)animation=requestAnimationFrame(tick);else animation=null;}
     animation=requestAnimationFrame(tick);
-  };
-  document.getElementById('punch-execute').onclick=async()=>{
-    if(!data?.replay_available)return;
-    try{await ensureControl();endHold();send({action:'custom_motion',name:'punch_right',confirmed:true});}
-    catch(e){notify(e.message);}
   };
   refresh();
 })();

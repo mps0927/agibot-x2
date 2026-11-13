@@ -1,0 +1,37 @@
+{
+  "schema": "x2.local-joint-preset.v1",
+  "name": "punch_right",
+  "label": "펀치 · 오른팔",
+  "robot_id": "agibot_x2_ultra_t2d5",
+  "units": "radian",
+  "interpolation": "quintic",
+  "max_target_rate_rps": 2.0,
+  "return_to_measured_start": true,
+  "required_controller": "native_mc",
+  "poses": {
+    "guard": {
+      "right_shoulder_pitch_joint": -0.35,
+      "right_shoulder_roll_joint": -0.25,
+      "right_shoulder_yaw_joint": 0.0,
+      "right_elbow_joint": -1.65,
+      "right_wrist_yaw_joint": 0.0,
+      "right_wrist_pitch_joint": 0.0,
+      "right_wrist_roll_joint": 0.0
+    },
+    "extend": {
+      "right_shoulder_pitch_joint": -1.20,
+      "right_shoulder_roll_joint": -0.25,
+      "right_shoulder_yaw_joint": 0.0,
+      "right_elbow_joint": -0.15,
+      "right_wrist_yaw_joint": 0.0,
+      "right_wrist_pitch_joint": 0.0,
+      "right_wrist_roll_joint": 0.0
+    }
+  },
+  "steps": [
+    {"phase": "guard", "target": "guard"},
+    {"phase": "extend", "target": "extend"},
+    {"phase": "recover", "target": "guard"},
+    {"phase": "return", "target": "measured_start"}
+  ]
+}

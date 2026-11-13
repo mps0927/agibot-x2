@@ -2,7 +2,7 @@
 import math
 from joint_contract import catalog as joint_catalog
 from posture_actions import POSTURES
-from punch import NAME as PUNCH_NAME, resource_binding
+from punch import NAME as PUNCH_NAME, local_catalog
 
 # The robot's RC log recorded pure yaw at 0.9756205446533405 rad/s.
 # Match the observed controller rate approximately, including VLM commands.
@@ -85,15 +85,16 @@ def prepare_preset_request(request,name,arm_actions):
 def catalog(arm_actions=None,profile=None,custom_actions=None):
     profile=profile or DEFAULT_PROFILE
     mapped=preset_mapping(arm_actions)
-    custom_actions={k:v for k,v in (custom_actions or {}).items() if k!=PUNCH_NAME or resource_binding(custom_actions)}
+    custom_actions={k:v for k,v in (custom_actions or {}).items() if k!=PUNCH_NAME}
     return dict(schema='x2.commands.v1',robot='AGIBOT X2 Ultra',profile=profile,profile_limits=PROFILE_LIMITS,
                 moves={n:velocity(n,profile) for n in DIRECTIONS},gestures={n:GESTURES[n] for n in mapped},
-                manual_modes=MODES,custom_motions=custom_actions or {},joint_pose=joint_catalog(),
+                manual_modes=MODES,custom_motions=custom_actions or {},joint_pose=joint_catalog(),local_joint_presets=local_catalog(),
                 preset_provenance='Vendor documentation; execution not verified',stop=True,arbitrary_joint_control=False,
                 preset_completion_tracking=False,preset_request_release='sdk_response',simultaneous_move_and_gesture=False)
 
 def planner_catalog(arm_actions=None,profile=None,custom_actions=None,control_permissions=None):
     result=catalog(arm_actions,profile,custom_actions)
+    result['local_joint_presets']={name:spec for name,spec in result['local_joint_presets'].items() if spec['executable']}
     mapped=preset_mapping(arm_actions)
     result.update(axes=dict(x='forward positive',y='left positive',yaw='counterclockwise positive'),
                   move_parameters=dict(velocity='[vx m/s, vy m/s, yaw rad/s], absolute bounds [0.30, 0.30, 0.97]',seconds='0.1 to 5 seconds, required'),

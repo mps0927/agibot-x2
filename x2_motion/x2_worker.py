@@ -13,7 +13,7 @@ from pathlib import Path
 import hashlib
 
 from capabilities import DEFAULT_PROFILE, DIRECTIONS, MODES, PRESETS, validate_profile, validate_velocity, velocity, prepare_preset_request
-from punch import NAME as PUNCH_NAME, resource_binding
+from punch import NAME as PUNCH_NAME, local_catalog
 from control_policy import permissions, command_allowed, MC_REJECTIONS,seat_hold_check,SEAT_MODE,active_locomotion_allowed,validate_preset_dispatch
 from posture_actions import POSTURES,validate_posture_request,prepare_posture_request
 from sdk_catalog import READ_QUERIES
@@ -101,7 +101,7 @@ def main():
                  model='X2 Ultra t2d5', fsm=None, fsm_at=0., ready=False, armed=False,
                  moving=False, gesture=None, arm_pending=False,native_result=None,seat_hold_pending=False,posture_pending=None,error='',
                  profile=dict(DEFAULT_PROFILE), arm_actions={k:v['id'] for k,v in available_presets.items()},
-                 custom_actions={}, hand_status='확인 중', battery_percent=None,
+                 custom_actions={}, local_joint_presets=local_catalog(), hand_status='확인 중', battery_percent=None,
                  joint_values={}, telemetry={}, sdk_queries={},sdk_services={},read_only=not enabled,
                  control_permissions=scopes,control_requests_sent=0, mode_changes_sent=0, velocity_publications=0)
     mode_at = 0.
@@ -500,7 +500,7 @@ def main():
             mutate('SetMcPresetMotion',req,lambda response:native_response(response,msg),msg)
             state['gesture']=spec['name'];state['arm_pending']=True;state['native_result']=None;return
         if action=='custom_motion':
-            if msg.get('name')==PUNCH_NAME and not resource_binding(state['custom_actions']):raise ValueError('로봇에 등록된 punch_right 팔 모션이 필요합니다.')
+            if msg.get('name')==PUNCH_NAME:raise ValueError('punch_right는 로컬 관절 프리셋입니다. 제조사 모션 재생 API로 실행할 수 없습니다.')
             spec=state['custom_actions'].get(msg.get('name'))
             if not spec or msg.get('confirmed') is not True:raise ValueError('기기에서 조회한 저장 동작만 실행할 수 있습니다.')
             req=ExecuteActionResource.Request();req.resource_key=spec['resource_key'];req.resource_version=spec['version']

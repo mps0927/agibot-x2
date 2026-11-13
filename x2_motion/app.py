@@ -28,7 +28,7 @@ from configuration import ROOT,DEFAULT_PORT,load_config,remote_paths,ssh_options
 from model_catalog import OpenRouterModels
 from lidar import CloudCache,DEFAULT_TOPIC,validate_topic,FRESH_MS
 from sensors import DEFAULT_CAMERA
-from punch import NAME as PUNCH_NAME, describe as describe_punch, export_csv, resource_binding
+from punch import NAME as PUNCH_NAME, describe as describe_punch, export_csv, local_catalog, PRESET_PATH
 
 HERE = Path(__file__).parent.resolve()
 
@@ -200,7 +200,7 @@ class X2Dashboard(Dashboard):
         common=preset_block_reason(self.state.get('fsm'),self.scopes,self.state.get('connected',False),bool(self.state.get('gesture')))
         presets=[dict(p,display_name=p['label'],sdk_binding_present=True,
                       block_reason=common) for p in available.values()]
-        custom=[v for k,v in self.state.get('custom_actions',{}).items() if k!=PUNCH_NAME or resource_binding(self.state.get('custom_actions'))]
+        custom=[v for name,v in self.state.get('custom_actions',{}).items() if name!=PUNCH_NAME]
         return web.json_response(dict(actions=[presets,custom],executor_actions={k:p['motion'] for k,p in available.items()},
             connected=bool(self.state.get('connected')),recorded=bool(self.state.get('recorded_state')),
             provenance='Installed SDK bindings only; live GetRobotResources for custom actions',
@@ -211,6 +211,7 @@ class X2Dashboard(Dashboard):
         return web.json_response(dict(schema='x2.action-map.v1',sdk_version=self.state.get('sdk_version'),
             connected=bool(self.state.get('connected')),required_modes=['STAND_DEFAULT','LOCOMOTION_DEFAULT'],
             allowed_action_types=['gesture','custom_motion','move','stop'],mappings=mapped,
+            local_joint_presets=local_catalog(),
             movement=dict(topic='/aima/mc/locomotion/velocity',directions=list(DIRECTIONS),permission=self.scopes['movement']),
             manual_modes=MODES,manual_postures=POSTURES,seat_hold=dict(action_desc=SEAT_MODE,service='/aimdk_5Fmsgs/srv/SetMcAction'),
             physical_execution_verified=False,completion_tracking='operator_confirmation',
@@ -430,12 +431,17 @@ class X2Dashboard(Dashboard):
         return web.json_response(dict(configured=True,persisted=False))
 
     async def punch(self,request):
+        if request.query.get('format')=='preset':
+            return web.FileResponse(PRESET_PATH,headers={'Content-Disposition':'attachment; filename="punch_right.json"'})
         result=describe_punch(self.state,self.sensor_connected())
         if request.query.get('format')=='csv':
             return web.Response(text=export_csv(result['profile']),content_type='text/csv',
-                headers={'Content-Disposition':'attachment; filename="x2_punch_right_reference.csv"'})
-        headers={'Content-Disposition':'attachment; filename="x2_punch_right_reference.json"'} if request.query.get('format')=='json' else {}
+                headers={'Content-Disposition':'attachment; filename="x2_punch_right_trajectory.csv"'})
+        headers={'Content-Disposition':'attachment; filename="x2_punch_right_trajectory.json"'} if request.query.get('format')=='json' else {}
         return web.json_response(result,headers=headers)
+
+    async def local_presets(self,request):
+        return web.json_response(dict(schema='x2.local-joint-presets.v1',presets=local_catalog()))
 
     async def models(self,request):
         if self.pipeline.endpoint:
@@ -454,6 +460,7 @@ def create_app(args):
     application.router.add_get('/api/sdk-map',dashboard.sdk_map)
     application.router.add_get('/api/models',dashboard.models)
     application.router.add_get('/api/punch',dashboard.punch)
+    application.router.add_get('/api/local-presets',dashboard.local_presets)
     async def sensor_page(request):
         return web.FileResponse(Path(__file__).parent/'web'/'sensor.html')
     application.router.add_get('/sensor',sensor_page)
