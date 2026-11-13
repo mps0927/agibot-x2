@@ -23,7 +23,7 @@ def permissions(full=False, presets=False,seat=False,postures=False):
                 mode_switch=bool(full or postures),seat_hold=bool(seat or postures),posture_actions=bool(postures))
 
 def command_allowed(action, scopes, mode=None):
-    if action in ('stop','release','disarm','gesture_release','configure','lidar_topic','lidar_frame_request','camera_select'):
+    if action in ('stop','release','disarm','gesture_release','configure','lidar_topic','lidar_frame_request','camera_select','camera_frame_request'):
         return True
     if action=='arm':return scopes['movement'] or scopes['presets']
     if action=='hold':return scopes['movement']

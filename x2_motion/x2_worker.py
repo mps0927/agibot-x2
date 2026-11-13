@@ -61,7 +61,7 @@ def main():
                 output_wake.wait(.05);output_wake.clear()
                 while not output_events.empty():output.write(output_events.get_nowait())
                 with output_lock:
-                    lines=[output_latest.pop(k) for k in ('state','camera_frame','lidar_frame') if k in output_latest]
+                    lines=[output_latest.pop(k) for k in ('state','lidar_frame','camera_frame') if k in output_latest]
                 for line in lines:output.write(line)
         except (BrokenPipeError,OSError):stop.set()
     threading.Thread(target=write_output,daemon=True).start()
@@ -106,6 +106,7 @@ def main():
     mode_at = 0.
     leg_at=0.
     camera = dict(message=None, at=0., sequence=0,source_hz=0.,fps=30,topic=DEFAULT_CAMERA,generation=0,error='')
+    camera_request=None
     sensors=SensorRegistry();sensor_subscriptions={};camera_subscription=None
     native_counts={};unsupported_sensors=set();bridge_types={};bridge=None
     image_times=deque(maxlen=90)
@@ -208,15 +209,18 @@ def main():
         event('camera_selected',topic=selected,generation=generation,request_id=request_id,control_request_sent=False)
     select_camera(DEFAULT_CAMERA)
     def send_camera():
+        nonlocal camera_request
         previous=0
         while not stop.is_set():
             began=time.monotonic();snapshot=camera.copy()
-            if snapshot['message'] is not None and snapshot['sequence']!=previous and began-snapshot['at']<2:
+            request=camera_request
+            if request and snapshot['message'] is not None and snapshot['sequence']!=previous and began-snapshot['at']<2:
                 try:
                     jpeg=camera_jpeg(snapshot['message'])
                     if snapshot['generation']==camera['generation']:
                         spec=sensors.entries.get(snapshot['topic'],{})
-                        emit(dict(type='camera_frame',jpeg=base64.b64encode(jpeg).decode(),at=time.time(),sequence=snapshot['sequence'],frame_id=snapshot['frame_id'],topic=snapshot['topic'],source_hz=snapshot['source_hz'],preview_fps=snapshot['fps'],label=spec.get('label','전면 RGB'),kind=spec.get('kind','camera')))
+                        emit(dict(type='camera_frame',frame_request_id=request,jpeg=base64.b64encode(jpeg).decode(),at=time.time(),sequence=snapshot['sequence'],frame_id=snapshot['frame_id'],topic=snapshot['topic'],source_hz=snapshot['source_hz'],preview_fps=snapshot['fps'],label=spec.get('label','전면 RGB'),kind=spec.get('kind','camera')))
+                        if camera_request==request:camera_request=None
                     previous=snapshot['sequence']
                 except Exception as exc:camera['error']=str(exc)
             stop.wait(max(.001,1/snapshot['fps']-(time.monotonic()-began)))
@@ -387,6 +391,7 @@ def main():
         finish_native_request(state,context,response.response.header.code,response.response.state.value,
                               'SetMcPresetMotion',event)
     def handle(msg):
+        nonlocal camera_request
         nonlocal desired,hold_at,hold_start,must_release,mode_target,posture_deadline,hold_limit
         if not isinstance(msg,dict):raise ValueError('요청은 JSON 객체여야 합니다.')
         ident=msg.get('request_id')
@@ -397,6 +402,7 @@ def main():
         action=msg.get('action')
         if not command_allowed(action,scopes,msg.get('mode')):raise ValueError('대시보드 실행 권한 잠금: '+str(action))
         if action=='lidar_frame_request':lidar.request(ident);return
+        if action=='camera_frame_request':camera_request=ident;return
         if action=='camera_select':
             try:select_camera(msg.get('topic'),ident)
             except Exception as exc:event('camera_select_error',request_id=ident,error=str(exc))

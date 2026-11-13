@@ -54,6 +54,10 @@ class DirectRobotConnection(unittest.IsolatedAsyncioTestCase):
                 worker.stdout.write((json.dumps(state)+'\n'+json.dumps(camera)+'\n').encode())
                 async for line in worker.stdin:
                     command=json.loads(line);received.append(command)
+                    # Real workers continue publishing state while streaming.
+                    worker.stdout.write((json.dumps(state)+'\n').encode())
+                    if command.get('action')=='camera_frame_request':
+                        worker.stdout.write((json.dumps(dict(camera,frame_request_id=command['request_id']))+'\n').encode())
                     if command.get('action')=='lidar_frame_request':
                         frame=dict(type='lidar_frame',topic='/aima/hal/sensor/lidar_chest_front/lidar_pointcloud',
                             frame_request_id=command['request_id'],frame_id='lidar_chest_front',sequence=1,generation=1,
@@ -99,7 +103,7 @@ class DirectRobotConnection(unittest.IsolatedAsyncioTestCase):
                             self.assertEqual(config['mode'],'ssh-direct');self.assertEqual(config['robot'],'127.0.0.1')
                             response=await client.post('/api/capture',json={},headers={'Origin':str(client.make_url('/')).rstrip('/')})
                             self.assertEqual(response.status,200);self.assertEqual(len(commands),1)
-                            self.assertTrue(received);self.assertTrue(all(x['action']=='lidar_frame_request' for x in received))
+                            self.assertTrue(received);self.assertTrue(all(x['action'] in ('lidar_frame_request','camera_frame_request') for x in received))
                             frame=await (await client.get('/api/lidar/frame')).json()
                             self.assertEqual(frame['points'],[[1.,2.,3.]])
                             self.assertIn('/home/robot/aimdk/install/setup.bash',commands[0])
@@ -122,6 +126,37 @@ class LocalBoundary(unittest.IsolatedAsyncioTestCase):
         self.client=TestClient(TestServer(application));await self.client.start_server()
         self.origin=str(self.client.make_url('/')).rstrip('/')
     async def asyncTearDown(self):await self.client.close();self.tmp.cleanup()
+    async def test_camera_waits_for_matching_frame_before_requesting_the_next(self):
+        self.d.state['connected']=True;self.d.state_at=time.monotonic()
+        sent=[];buffer=io.BytesIO();Image.new('RGB',(16,12),'blue').save(buffer,format='JPEG');jpeg=buffer.getvalue()
+        async def send(dashboard,message):sent.append(message)
+        with patch('dashboard_base.Dashboard.send',new=send):
+            task=asyncio.create_task(self.d.poll_camera())
+            try:
+                await asyncio.sleep(.12)
+                self.assertEqual(len(sent),1)
+                self.assertEqual(sent[0]['action'],'camera_frame_request')
+                frame=dict(jpeg=base64.b64encode(jpeg).decode(),topic=self.d.camera_topic)
+                self.d.accept_camera(dict(frame,frame_request_id='old-request'))
+                self.assertIsNone(self.d.latest_jpeg)
+                await asyncio.sleep(.08);self.assertEqual(len(sent),1)
+                self.d.accept_camera(dict(frame,frame_request_id=sent[0]['request_id']))
+                self.assertEqual(self.d.latest_jpeg,jpeg)
+                await asyncio.sleep(.08);self.assertEqual(len(sent),2)
+                self.assertNotEqual(sent[0]['request_id'],sent[1]['request_id'])
+                self.assertEqual(self.d.camera_fps,30)
+            finally:
+                task.cancel();await asyncio.gather(task,return_exceptions=True)
+    async def test_camera_polling_resumes_after_an_ssh_write_disconnect(self):
+        self.d.state['connected']=True;self.d.state_at=time.monotonic()
+        sent=[]
+        async def send(dashboard,message):
+            sent.append(message)
+            if len(sent)==1:raise asyncssh.ConnectionLost('fixture disconnected while writing')
+            dashboard.closing=True
+        with patch('dashboard_base.Dashboard.send',new=send):
+            await asyncio.wait_for(self.d.poll_camera(),2)
+        self.assertEqual(len(sent),2);self.assertNotEqual(sent[0]['request_id'],sent[1]['request_id'])
     async def test_lidar_polling_resumes_after_an_ssh_write_disconnect(self):
         self.d.state['connected']=True;self.d.state_at=time.monotonic()
         sent=[]

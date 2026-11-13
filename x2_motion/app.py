@@ -62,6 +62,7 @@ class X2Dashboard(Dashboard):
         self.camera_subscriptions={}
         self.camera_topic=DEFAULT_CAMERA
         self.camera_epoch=0
+        self.camera_pending=None
         self.scopes=permissions(getattr(args,'allow_control',False),getattr(args,'allow_presets',False),getattr(args,'allow_seat_hold',False),getattr(args,'allow_posture_actions',False))
         args.read_only=not any(self.scopes.values())
         self.camera_fps=30
@@ -78,7 +79,9 @@ class X2Dashboard(Dashboard):
 
     async def start(self,application):
         await super().start(application)
-        if not getattr(self.args,'offline',False):self.tasks.append(asyncio.create_task(self.poll_lidar()))
+        if not getattr(self.args,'offline',False):
+            self.tasks.append(asyncio.create_task(self.poll_lidar()))
+            self.tasks.append(asyncio.create_task(self.poll_camera()))
         replay=getattr(self.args,'replay',None)
         if not replay:return
         root=Path(replay)
@@ -107,6 +110,7 @@ class X2Dashboard(Dashboard):
 
     async def invalidate_connection(self):
         self.camera_epoch+=1
+        self.camera_pending=None
         self.lidar.clear()
         self.lidar_session=uuid.uuid4().hex
         self.latest_jpeg=None
@@ -120,11 +124,14 @@ class X2Dashboard(Dashboard):
         await super().invalidate_connection()
 
     def accept_camera(self,data):
+        request_id=data.get('frame_request_id')
+        if request_id and (not self.camera_pending or self.camera_pending[0]!=request_id):return
         if data.get('topic') and data['topic']!=self.camera_topic:return
         try:
             jpeg=base64.b64decode(data['jpeg'],validate=True)
             if not jpeg.startswith(b'\xff\xd8') or len(jpeg)>6*1024*1024:return
         except (ValueError,KeyError):return
+        self.camera_pending=None
         now=time.monotonic()
         self.camera_arrivals.append(now)
         self.camera_hz=self.rate(self.camera_arrivals)
@@ -227,6 +234,7 @@ class X2Dashboard(Dashboard):
         camera=self.state.get('camera_selected')
         if camera and camera!=self.camera_topic:
             self.camera_epoch+=1
+            self.camera_pending=None
             self.camera_topic=camera;self.latest_jpeg=None;self.preview_jpeg=None;self.camera_received=0.
             self.camera_arrivals.clear();self.preview_arrivals.clear();self.camera_meta={}
             self.frames.clear();self.plans.clear()
@@ -252,6 +260,7 @@ class X2Dashboard(Dashboard):
             if result.get('event')!='camera_selected':raise ValueError(result.get('error') or '카메라를 전환하지 못했습니다.')
         finally:self.camera_subscriptions.pop(ident,None)
         self.camera_epoch+=1
+        self.camera_pending=None
         self.camera_topic=topic;self.latest_jpeg=None;self.preview_jpeg=None;self.camera_received=0.
         self.camera_arrivals.clear();self.preview_arrivals.clear();self.camera_meta={}
         self.frames.clear();self.plans.clear()
@@ -359,6 +368,17 @@ class X2Dashboard(Dashboard):
 
     def lidar_observation(self):
         return self.lidar.observation(self.sensor_connected())
+
+    async def poll_camera(self):
+        # Bound full-resolution video to one frame in flight so it cannot fill
+        # SSH buffers ahead of point clouds, state, or stop responses.
+        while not self.closing:
+            try:
+                if self.sensor_connected() and (not self.camera_pending or time.monotonic()-self.camera_pending[1]>1):
+                    ident=uuid.uuid4().hex;self.camera_pending=(ident,time.monotonic())
+                    await super().send(dict(action='camera_frame_request',request_id=ident))
+            except (RuntimeError,OSError,asyncio.TimeoutError,asyncssh.Error):self.camera_pending=None
+            await asyncio.sleep(1/30)
 
     async def lidar_frame(self,request):
         return web.json_response(self.lidar.snapshot(self.sensor_connected()))
