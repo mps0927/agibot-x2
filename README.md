@@ -258,6 +258,5 @@ docker compose up -d --build
 | [현장 사용 순서](docs/OPERATIONS.md) | 설치를 마친 뒤 매일 확인할 시작·종료 순서 |
 | [카메라·센서 안내](docs/SENSORS.md) | 영상 선택·장치 상태·라이다 확인 |
 | [시스템 프롬프트 실험 안내](docs/SYSTEM_PROMPT_KO.md) | 프롬프트 수정·적용·응답 비교·실제 전송 기록 확인 |
-| [오른팔 펀치 제작](docs/PUNCH_KO.md) | 궤적 미리보기·참고 자료 내보내기·등록 모션 재생 준비 |
 
 개발·Python 직접 실행은 [개발 안내](docs/DEVELOPMENT.md), 기능별 연결은 [SDK 매핑](docs/SDK_MAPPING.md)을 참고합니다. 조작 화면은 [Unitree G1 파이프라인](https://github.com/8l4nnk/unitree-g1-pipeline)과 구성을 맞췄으며, X2는 포트 `8766`을 사용합니다.
