@@ -11,6 +11,7 @@ const keyDirections = {w:'forward',ArrowUp:'forward',s:'backward',ArrowDown:'bac
 const modeLabels={STAND_DEFAULT:'안정 서기',LOCOMOTION_DEFAULT:'보행',SIT_JOINT_DEFAULT:'착석 고정',SIT_UP_DEFAULT:'일어서는 중',SIT_DOWN_DEFAULT:'앉는 중',PASSIVE_DEFAULT:'영토크',DAMPING_DEFAULT:'댐핑',JOINT_DEFAULT:'서기 준비'};
 const canExecute=()=>!config.read_only&&$('physical').checked;
 function notify(text) { $('notice').textContent=text; $('notice').hidden=false; clearTimeout(noticeTimer); noticeTimer=setTimeout(()=>$('notice').hidden=true,6000); }
+window.addEventListener('x2:camera-selected',()=>{instructionEpoch++;frame=null;result=null;update();});
 function send(value) { if(socket?.readyState===WebSocket.OPEN){socket.send(JSON.stringify(value));return true;}return false; }
 async function api(path, data, isForm=false) {
   const response=await fetch(path,{method:'POST',headers:isForm?{}:{'Content-Type':'application/json'},body:isForm?data:JSON.stringify(data||{})});

@@ -444,6 +444,9 @@ def create_app(args):
     application.router.add_get('/api/action-map',dashboard.action_map)
     application.router.add_get('/api/sdk-map',dashboard.sdk_map)
     application.router.add_get('/api/models',dashboard.models)
+    async def sensor_page(request):
+        return web.FileResponse(Path(__file__).parent/'web'/'sensor.html')
+    application.router.add_get('/sensor',sensor_page)
     application.router.add_get('/api/sensors',dashboard.sensor_status)
     application.router.add_post('/api/camera/select',dashboard.select_camera)
     application.router.add_post('/api/settings/model',dashboard.model_settings)

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>X2 · 카메라와 센서</title>
+<link rel="stylesheet" href="/static/style.css"><link rel="stylesheet" href="/static/x2.css"><link rel="stylesheet" href="/static/sensor.css">
+<script src="/static/sensors.js" defer></script>
+</head>
+<body class="sensor-page">
+<header><a class="brand" href="/" aria-label="AGIBOT X2 대시보드"><span class="brand-icon">X2</span><span>카메라와 센서<small>AGIBOT · SENSOR MONITOR</small></span></a><nav aria-label="페이지 이동"><a class="page-link" href="/">← 대시보드</a></nav><span id="sensor-connection" class="badge" role="status">연결 확인 중</span></header>
+<main>
+<div class="title-row"><div><span class="eyebrow">CAMERAS &amp; SENSORS</span><h1>카메라 · 센서 전체</h1><p class="subtle">장치별 수신 상태와 현재 값을 확인합니다. 로봇이 연결되면 자동으로 갱신됩니다.</p></div><button id="save-sensors" disabled>현재 센서 값 저장</button></div>
+<section class="panel sensor-preview" aria-labelledby="preview-heading">
+<div class="panel-head"><div><span class="eyebrow">CAMERA PREVIEW</span><h2 id="preview-heading">선택한 카메라</h2></div><span id="camera-status" class="badge" role="status">영상 수신 대기</span></div>
+<div class="camera-wrap"><img id="camera" alt="선택한 로봇 카메라의 실시간 영상" hidden><p id="camera-error" class="sensor-camera-message" role="status">로봇 연결 후 카메라 영상을 표시합니다.</p></div>
+<div class="camera-toolbar"><label for="view">카메라 선택</label><select id="view" disabled><option value="">로봇 연결 후 선택</option></select><span id="view-label" class="subtle">영상 수신 대기</span></div>
+<p class="camera-note">여기서 선택한 카메라는 메인 대시보드의 영상에도 적용됩니다.</p>
+</section>
+<section class="panel sensor-panel" aria-labelledby="inventory-heading">
+<div class="panel-head"><div><span class="eyebrow">SENSOR INVENTORY</span><h2 id="inventory-heading">장치 목록</h2></div><span id="sensor-summary" class="badge" role="status">로봇 연결 대기</span></div>
+<div class="sensor-content"><label class="sensor-search-label" for="sensor-search">센서 찾기</label><input id="sensor-search" type="search" placeholder="이름 · 위치 · 종류 검색" autocomplete="off"><p id="sensor-filter-summary" class="subtle" role="status"></p><div id="sensor-list" class="sensor-list"><p class="subtle">로봇 연결 후 장치 목록을 가져옵니다.</p></div><p id="sensor-empty" class="subtle" hidden>검색한 센서가 없습니다.</p></div>
+</section>
+<div id="notice" class="notice" role="alert" hidden></div>
+<footer><span>AGIBOT X2 · SENSOR MONITOR</span><a href="/">대시보드로 돌아가기</a></footer>
+</main>
+</body>
+</html>
