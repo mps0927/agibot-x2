@@ -26,6 +26,22 @@ docker compose up -d
 
 첫 실행에는 필요한 파일을 내려받고 이미지를 만듭니다. 완료되면 같은 기기의 브라우저에서 **[대시보드 열기](http://127.0.0.1:8766)**를 누릅니다. `.env`와 로봇이 없어도 화면이 열립니다. `-d`로 실행하면 터미널을 닫아도 대시보드가 유지됩니다.
 
+### LAN 설정은 언제 필요한가요?
+
+대시보드는 위 명령만으로 열립니다. 로봇 전원이나 LAN 연결은 화면을 여는 데 필요하지 않습니다.
+
+로봇을 연결하려면 케이블을 꽂고 다음 명령으로 연결 경로를 확인합니다.
+
+```bash
+docker compose run --rm x2 network-check
+```
+
+`접속 가능`이 나오면 기존 LAN 설정을 그대로 사용합니다. 로그인 정보와 최초 로봇 등록을 마치면 대시보드가 자동으로 연결됩니다. 연결이 끊겼다가 복구되어도 다시 실행할 필요가 없습니다.
+
+`연결 실패`가 나오면 로봇 전원·케이블을 먼저 확인하고, 처음 사용하는 PC에서는 [유선 주소 설정](docs/FIRST_START_KO.md#lan)을 한 번 진행합니다. 설정은 PC에 저장되므로 같은 유선 어댑터로 사용할 때마다 반복할 필요가 없습니다.
+
+Windows·Mac의 Docker는 PC의 물리 랜카드 주소를 직접 변경할 수 없습니다. 따라서 기본 고정 주소를 쓰는 X2에 처음 직접 연결할 때는 PC의 유선 주소를 맞춰야 합니다. [Docker의 호스트 네트워크 설명](https://docs.docker.com/engine/network/drivers/host/#limitations)을 참고하세요.
+
 ### 로봇과 VLM을 처음 연결할 때
 
 1. `.env` 파일이 아직 없다면 프로젝트 폴더에서 다음 명령으로 설정 파일을 만듭니다.
@@ -51,7 +67,7 @@ OPENROUTER_API_KEY=발급받은_OpenRouter_키
 docker compose up -d --force-recreate
 ```
 
-4. [전원 켜기](docs/USER_GUIDE_KO.md#power-on)에 따라 로봇을 부팅합니다. 해당 PC와 X2를 LAN으로 연결하고 [유선 주소 설정](docs/FIRST_START_KO.md#lan)을 진행합니다. 기본 예시는 PC `10.0.1.2`, 로봇 `10.0.1.41`입니다.
+4. [전원 켜기](docs/USER_GUIDE_KO.md#power-on)에 따라 로봇을 부팅합니다. 해당 PC와 X2를 LAN으로 연결하고 `network-check`로 접속을 확인합니다. 연결되지 않으면 [유선 주소 설정](docs/FIRST_START_KO.md#lan)을 진행합니다. 기본 예시는 PC `10.0.1.2`, 로봇 `10.0.1.41`입니다.
 5. 로봇을 처음 연결한 기기에서 접속 키를 등록하고 로그인을 확인합니다. 표시된 지문을 장비 담당자가 제공한 지문과 대조한 뒤 `yes`를 입력합니다.
 
 ```bash
@@ -72,6 +88,7 @@ docker compose run --rm x2 doctor
 | 백그라운드 실행 | `docker compose up -d` |
 | 대시보드 실행 상태 확인 | `docker compose ps` |
 | 최근 로그 확인 | `docker compose logs --tail 100 x2` |
+| 로봇 주소까지 연결 확인 | `docker compose run --rm x2 network-check` |
 | 로봇 연결·SDK·라이다 토픽 진단 | `docker compose run --rm x2 doctor` |
 | `.env` 변경 적용 | `docker compose up -d --force-recreate` |
 | 대시보드 종료 | `docker compose down` |
@@ -113,4 +130,4 @@ agibot-x2/
 
 컨테이너에서 X2 개발 보드 `10.0.1.41`에 SSH로 접속합니다. 로봇에 설치된 ROS 2 Humble과 AIMDK를 사용하며, 대시보드 워커는 `/home/agi/agibot_dashboard`에 배치합니다. 웹 화면·RGB·점군은 같은 대시보드에서 제공합니다.
 
-개발용 `.sh` 실행과 테스트는 [개발 안내](docs/DEVELOPMENT.md), 기능별 SDK 연결은 [SDK 매핑](docs/SDK_MAPPING.md), 점검 결과는 [검증 기록](VERIFICATION.md)에 정리했습니다.
+개발용 `.sh` 실행과 테스트는 [개발 안내](docs/DEVELOPMENT.md), 기능별 SDK 연결은 [SDK 매핑](docs/SDK_MAPPING.md), 점검 결과는 [검증 기록](docs/VERIFICATION.md)에 정리했습니다.

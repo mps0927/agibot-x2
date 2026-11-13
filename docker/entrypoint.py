@@ -55,13 +55,15 @@ def main():
     prepare()
     command=sys.argv[1] if len(sys.argv)>1 else 'serve'
     if command=='trust-host':asyncio.run(trust_host());return
+    if command=='network-check':
+        os.execv(sys.executable,[sys.executable,str(ROOT/'docker/network_check.py')])
     if command=='doctor':
         os.execv(sys.executable,[sys.executable,str(ROOT/'docker/doctor.py')])
     if command=='serve':
         args=sys.argv[2:]
         flags=[] if '--offline' in args else ['--allow-control','--allow-posture-actions']
         os.execv(sys.executable,[sys.executable,str(ROOT/'x2_motion/dashboard.py'),*flags,*args])
-    raise ValueError('지원 명령: serve, doctor, trust-host')
+    raise ValueError('지원 명령: serve, doctor, network-check, trust-host')
 
 if __name__=='__main__':
     try:main()

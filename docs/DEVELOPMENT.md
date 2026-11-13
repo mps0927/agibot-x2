@@ -40,6 +40,15 @@ ssh agi@10.0.1.41
 
 직접 실행 시 로그는 `.runtime/dashboard.log`, 사진·VLM 기록은 `x2_motion/artifacts/`에 저장됩니다. Docker 실행 기록은 `/data/artifacts/`에 저장됩니다. 설정은 실행한 PC의 `.env`에서 읽으며, 환경변수로 지정한 값이 우선합니다.
 
+## 저장소 관리
+
+- 루트에는 Docker 설정과 실행 진입점을 둡니다.
+- 사용설명서·SDK 안내·[검증 기록](VERIFICATION.md)은 `docs/`에서 관리합니다.
+- `.sh` 파일은 Python 직접 실행과 Ubuntu·macOS CI에서 사용합니다.
+- `sdk_reference/`는 SDK 매핑 회귀 검사의 기준 자료입니다.
+- `x2_motion/test_*.py`는 GitHub에서 유지하며 Docker 이미지에서는 제외합니다.
+- 실제 비밀번호·접속 키·촬영 기록·로봇 로그는 Git에 올리지 않습니다.
+
 ## 소스 수정과 검사
 
 소스를 수정하면 무결성 목록을 갱신한 뒤 검사합니다.

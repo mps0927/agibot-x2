@@ -23,3 +23,6 @@ env
 *.log
 *.tar
 *.tar.gz
+
+# Source-only unit tests; Docker regression fixtures stay in docker/.
+x2_motion/test_*.py
