@@ -49,14 +49,26 @@ ssh agi@10.0.1.41
 - `x2_motion/test_*.py`는 GitHub에서 유지하며 Docker 이미지에서는 제외합니다.
 - 실제 비밀번호·접속 키·촬영 기록·로봇 로그는 Git에 올리지 않습니다.
 
+## Shell 스크립트의 용도
+
+Docker 사용자는 README의 Compose 명령으로 실행합니다. 아래 스크립트는 Python 직접 실행과 개발·자동 검사에서 사용합니다. Windows에서는 Git Bash, Mac·Linux에서는 터미널에서 실행합니다.
+
+| 파일 | 역할 | 사용하는 곳 |
+|---|---|---|
+| `setup.sh` | 기존 Python으로 `.venv`를 준비하고 의존성을 설치·재사용 | 직접 실행·GitHub Actions |
+| `run.sh` | 옵션에 따라 대시보드를 직접 실행 | UI 개발·실물 상태 조회·`start_field.sh` |
+| `start_field.sh` | 제어 기능을 켠 실물 대시보드를 백그라운드 실행 | Docker 없이 실물 개발 |
+| `preflight.sh` | 의존성·구문·옵션 검사, 선택 시 단위 테스트·로봇 조회 | 개발·GitHub Actions |
+| `status.sh` | 직접 실행한 서버의 상태 확인 | Python 직접 실행 |
+| `stop.sh` | 직접 실행한 서버 종료 | Python 직접 실행 |
+| `scripts/python.sh` | 위 스크립트가 같은 `.venv`의 Python을 선택하도록 지원 | 다른 스크립트에서 불러옴 |
+
 ## 소스 수정과 검사
 
-소스를 수정하면 무결성 목록을 갱신한 뒤 검사합니다.
+소스를 수정하면 다음 검사로 의존성·구문·동작 계약을 확인합니다.
 
 ```bash
-python refresh_checksums.py
 ./preflight.sh --offline --test
-python refresh_checksums.py --check
 ```
 
 `python` 대신 설치된 `python3` 명령을 사용해도 됩니다. 단위 테스트만 실행하려면 프로젝트 가상환경에서 `python -m unittest discover -s x2_motion`을 실행합니다.

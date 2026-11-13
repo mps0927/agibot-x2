@@ -6,12 +6,11 @@ from pathlib import Path
 sys.path.insert(0,str(Path('/app/x2_motion')))
 import asyncssh
 from configuration import load_config,remote_paths,ssh_options
-from preflight import check_robot,verify
+from preflight import check_robot
 from lidar import DEFAULT_TOPIC
 
 async def main():
     load_config()
-    print('Source checksums:',verify(),flush=True)
     await check_robot()
     home,sdk=remote_paths()
     command=('source /opt/ros/humble/setup.bash\nsource '+shlex.quote(sdk+'/install/setup.bash')+

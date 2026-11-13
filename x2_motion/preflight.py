@@ -1,9 +1,7 @@
-"""Local integrity/dependency checks and read-only robot SDK inspection."""
+"""Local dependency checks and read-only robot SDK inspection."""
 import argparse,ast,asyncio,json,os,shlex,subprocess,sys
 from pathlib import Path
 from configuration import ROOT,load_config,remote_paths,ssh_options
-sys.path.insert(0,str(ROOT))
-from refresh_checksums import verify
 
 async def check_robot():
     import asyncssh
@@ -24,7 +22,6 @@ def main():
     args,unknown=parser.parse_known_args(argv);load_config(args.env_file)
     assert sys.version_info>=(3,10),'Python 3.10+ required'
     import aiohttp,PIL,asyncssh
-    print('Source checksums:',verify())
     for path in (ROOT/'x2_motion').glob('*.py'):ast.parse(path.read_text(encoding='utf-8'),filename=str(path),feature_version=(3,10))
     for path in (ROOT/'x2_motion').glob('*.json'):json.loads(path.read_text(encoding='utf-8'))
     from app import parse_args

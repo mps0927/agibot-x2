@@ -1,27 +1,36 @@
-# AGIBOT X2 Multimodal Pipeline
+# AGIBOT X2 대시보드
 
-X2 Ultra t2d5의 영상·배터리·관절·라이다를 확인하고, 일어서기·앉기·프리셋·이동을 조작하는 웹 대시보드입니다. OpenRouter의 이미지 지원 모델을 선택해 사진과 글로 로봇 동작을 요청할 수 있습니다. [Unitree G1 파이프라인](https://github.com/8l4nnk/unitree-g1-pipeline)과 조작 화면 구성을 맞췄습니다.
+AGIBOT X2 Ultra의 카메라·라이다·배터리·관절 상태를 확인하고, 화면에서 착석 고정·일어서기·프리셋·이동을 조작합니다. OpenRouter의 이미지 지원 모델을 선택해 사진과 글로 동작을 요청할 수 있습니다.
 
-Windows PC, Mac, DGX Spark 중 **사용할 기기 한 대에서 Docker와 브라우저를 실행**하고, 그 기기에 X2를 LAN으로 직접 연결합니다. 대시보드 주소는 **[http://127.0.0.1:8766](http://127.0.0.1:8766)**입니다. G1의 기본 포트 8765와 함께 사용할 수 있습니다.
+**Windows PC, Mac, DGX Spark 중 사용할 기기 한 대에서 설치부터 조종까지 진행합니다.** 그 기기에서 Docker와 브라우저를 실행하고, X2를 LAN 케이블로 직접 연결합니다.
 
-## 처음 사용하는 경우
+- 처음 설치한다면 아래 **1번부터** 진행합니다. 클릭 위치와 저장 방법은 [최초 설치 안내](docs/FIRST_START_KO.md)에 있습니다.
+- 설치를 마쳤다면 [다음부터 시작하기](#daily)로 이동합니다.
+- 대시보드 주소는 [http://127.0.0.1:8766](http://127.0.0.1:8766)입니다.
 
-**[처음 설치하고 로봇 연결하기](docs/FIRST_START_KO.md)**를 순서대로 따라 하세요. 명령 창을 여는 방법부터 `.env` 저장, 운영체제별 유선 설정과 SSH 로그인까지 설명합니다.
+<a id="prepare"></a>
+## 1. 시작 전 준비
 
-| 최초 한 번 | 이후 매번 |
+| 준비할 것 | 확인할 내용 |
 |---|---|
-| Git·Docker 설치, 저장소 내려받기 | Docker 실행 |
-| `.env`에 로봇 로그인 정보 입력 | 로봇 전원 켜기·LAN 연결 |
-| 로봇용 유선 어댑터의 IP 설정 | 프로젝트 폴더에서 `docker compose up -d` |
-| 로봇 접속 키 등록·연결 확인 | 브라우저 열기·로봇 제어 준비 |
+| 사용할 PC 한 대 | Windows, Mac 또는 DGX Spark. 설치·업데이트와 VLM 사용에 필요한 인터넷 연결 |
+| Git·Docker | Git은 프로젝트를 내려받고, Docker는 대시보드와 필요한 프로그램을 실행합니다. Python과 패키지는 Docker가 준비합니다. |
+| 저장소 접근 권한 | [GitHub 저장소](https://github.com/mps0927/agibot-x2)가 해당 계정에서 열리는지 확인합니다. |
+| LAN 케이블 | PC에 유선 포트가 없으면 USB Ethernet 어댑터도 준비합니다. |
+| 로봇 접속 정보 | 기본 주소 `10.0.1.41`, 계정 `agi`, 장비 담당자가 알려 준 로봇 비밀번호와 SSH 호스트 키 지문 |
+| 로봇 지지·정지 준비 | [사용 전 준비](docs/USER_GUIDE_KO.md#prepare)에 따라 의자·보조자·리모컨을 준비합니다. |
+| OpenRouter API 키 | VLM을 사용할 때 준비합니다. 수동 조종만 사용하면 비워 둡니다. |
 
-설정은 해당 PC와 유선 어댑터에서 계속 사용합니다. 새 PC나 새 USB LAN 어댑터를 사용할 때는 [최초 설정](docs/FIRST_START_KO.md)을 확인합니다.
+처음 한 번은 프로그램 설치, `.env` 작성, 유선 IP 설정과 로봇 키 등록을 진행합니다. 같은 PC·같은 어댑터에서는 설정을 저장해 계속 사용합니다.
 
-## 최초 설치 순서
+<a id="first-setup"></a>
+## 2. 처음 한 번 설치하고 연결하기
 
-### 1. Git과 Docker를 준비합니다
+### 2.1 프로그램을 설치하고 명령 창을 엽니다
 
-Windows·Mac은 Docker Desktop을 실행합니다. DGX Spark는 Docker 서비스를 실행합니다. [설치 방법](docs/FIRST_START_KO.md#install)에 따라 준비한 뒤 확인합니다.
+[Windows](docs/FIRST_START_KO.md#install-windows), [Mac](docs/FIRST_START_KO.md#install-mac), [DGX Spark](docs/FIRST_START_KO.md#install-dgx) 안내에 따라 Git과 Docker를 준비합니다. Windows에서는 **PowerShell**, Mac·DGX에서는 **터미널**을 엽니다.
+
+Windows·Mac에서는 Docker Desktop을 실행한 뒤, 명령 창에서 한 줄씩 실행합니다.
 
 ```bash
 git --version
@@ -29,27 +38,34 @@ docker version
 docker compose version
 ```
 
-Docker의 Client·Server가 모두 나오고 Compose가 **2.30 이상**이면 진행합니다. Python과 대시보드 패키지는 Docker가 준비합니다.
+Git 버전, Docker의 `Client`·`Server` 버전, Compose **2.30 이상**이 표시되면 진행합니다. 실패하면 [설치 확인](docs/FIRST_START_KO.md#install-check)을 따릅니다.
 
-### 2. 프로젝트와 설정 파일을 준비합니다
+### 2.2 프로젝트를 내려받습니다
 
-처음 내려받는 경우 명령을 한 줄씩 실행합니다. [GitHub 로그인 도움말](docs/FIRST_START_KO.md#github-login)을 참고할 수 있습니다.
+원하는 작업 폴더에서 실행합니다.
 
 ```bash
 git clone https://github.com/mps0927/agibot-x2.git
 cd agibot-x2
+```
+
+명령 창에서 `compose.yaml`과 `README.md`가 있는 폴더에 들어왔으면 완료입니다. 이미 내려받았다면 [프로젝트 폴더에서 명령 창 열기](docs/FIRST_START_KO.md#project-folder)를 따릅니다. 로그인에 실패하면 [GitHub 접속 안내](docs/FIRST_START_KO.md#github-login)를 확인합니다.
+
+### 2.3 `.env`에 접속 정보를 저장합니다
+
+프로젝트 폴더에서 `.env`가 아직 없을 때만 복사합니다. 기존 파일이 있으면 바로 엽니다.
+
+```bash
 cp .env.example .env
 ```
 
-이미 내려받았다면 `agibot-x2` 폴더에서 기존 `.env`를 엽니다.
-
-| 기기 | `.env` 열기 | 저장 |
+| 기기 | 파일 열기 | 저장 |
 |---|---|---|
-| Windows PowerShell | `notepad .env` | `Ctrl+S` |
-| Mac 터미널 | `open -e .env` | `Command+S` |
-| DGX 터미널 | `nano .env` | `Ctrl+O` → Enter → `Ctrl+X` |
+| Windows | `notepad .env` | `Ctrl+S` |
+| Mac | `open -e .env` | `Command+S` |
+| DGX Spark | `nano .env` | `Ctrl+O` → Enter → `Ctrl+X` |
 
-파일에서 아래 값을 확인하고 실제 로봇 비밀번호를 입력합니다.
+아래 줄을 찾아 `=` 오른쪽을 입력하고 UTF-8 일반 텍스트로 저장합니다.
 
 ```dotenv
 X2_SSH_HOST=10.0.1.41
@@ -58,80 +74,135 @@ X2_SSH_PASSWORD=
 OPENROUTER_API_KEY=
 ```
 
-`X2_SSH_PASSWORD=` 뒤에는 장비 담당자가 알려 준 로봇 비밀번호를 입력합니다. VLM을 사용할 때 `OPENROUTER_API_KEY=` 뒤에 OpenRouter 키도 입력합니다. 값은 따옴표 없이 적고 UTF-8로 저장합니다. [설정 파일 작성 방법](docs/FIRST_START_KO.md#env)에 예시가 있습니다.
+`X2_SSH_PASSWORD`에 실제 로봇 비밀번호를 입력합니다. VLM을 사용하면 `OPENROUTER_API_KEY`도 입력합니다. 값은 따옴표 없이 적습니다. [파일 작성 예시와 저장 방법](docs/FIRST_START_KO.md#env)을 참고하세요.
 
-### 3. 대시보드를 엽니다
+### 2.4 로봇을 켜고 유선 주소를 설정합니다
+
+[전원 켜기](docs/USER_GUIDE_KO.md#power-on)에 따라 로봇을 의자와 보조자로 지지하고 부팅합니다. LAN 케이블로 PC와 [X2 뒤쪽 개발용 RJ45 포트](docs/USER_GUIDE_KO.md#buttons)를 연결합니다.
+
+PC에서 로봇 케이블을 꽂은 **유선 어댑터**에 다음 값을 저장합니다. [Windows](docs/FIRST_START_KO.md#lan-windows), [Mac](docs/FIRST_START_KO.md#lan-mac), [DGX Spark](docs/FIRST_START_KO.md#lan-dgx)의 설정 순서를 따릅니다.
+
+| 설정하는 곳 | 값·역할 |
+|---|---|
+| PC의 Ethernet IPv4 주소 | `10.0.1.2` — PC 자신의 유선 주소 |
+| 서브넷 마스크 / 프리픽스 | `255.255.255.0` / `24` |
+| 유선 게이트웨이·DNS | 비워 둡니다. 인터넷용 Wi-Fi는 기존 설정을 유지합니다. |
+| `.env`의 로봇 주소 | `10.0.1.41` — 대시보드가 접속할 대상 |
+
+```text
+PC 유선 10.0.1.2 ── LAN ── X2 10.0.1.41
+PC Wi-Fi         ── 공유기 ── 인터넷
+```
+
+유선 설정 화면에 `10.0.1.2`가 표시되면 완료입니다. 로봇용 고정 주소는 사용 후에도 유지합니다. 같은 랜포트를 일반 인터넷용으로 바꿔 쓸 때만 [주소 복원](docs/FIRST_START_KO.md#restore-lan)을 진행합니다.
+
+### 2.5 대시보드를 실행합니다
+
+프로젝트 폴더에서 실행합니다.
 
 ```bash
 docker compose up -d
 ```
 
-첫 실행에는 인터넷에서 필요한 파일을 내려받고 이미지를 만듭니다. 완료되면 같은 기기의 브라우저에서 [대시보드](http://127.0.0.1:8766)를 엽니다. `.env`와 로봇이 없어도 화면을 확인할 수 있습니다. `-d`로 실행하면 터미널을 닫아도 대시보드가 유지됩니다.
+첫 실행에는 필요한 파일을 내려받고 이미지를 만듭니다. 명령이 완료되면 같은 PC의 브라우저에서 [대시보드](http://127.0.0.1:8766)를 엽니다. `-d`로 실행하면 명령 창을 닫아도 유지됩니다. 로봇이 없어도 화면을 열고 이미지를 업로드할 수 있습니다.
 
-### 4. 로봇과 유선으로 연결합니다
+화면이 열리지 않으면 [실행 확인](docs/FIRST_START_KO.md#dashboard-start)을 따릅니다.
 
-[전원 켜기](docs/USER_GUIDE_KO.md#power-on)에 따라 로봇을 부팅하고 PC와 X2 뒤쪽 개발용 RJ45를 LAN으로 연결합니다. **로봇용 유선 어댑터**에 아래 주소를 처음 한 번 설정합니다.
+### 2.6 로봇을 등록하고 연결을 확인합니다
 
-| 항목 | 값 |
-|---|---|
-| PC 유선 IPv4 | `10.0.1.2` |
-| 서브넷 마스크 / 프리픽스 | `255.255.255.0` / `24` |
-| 게이트웨이·DNS | 비워 둡니다. |
-| 로봇 주소 | `10.0.1.41` |
-
-`10.0.1.2`는 PC의 유선 주소이고, `.env`의 `10.0.1.41`은 접속할 로봇의 주소입니다. 로봇용 유선 주소는 사용 후에도 유지합니다. 인터넷용 Wi-Fi는 기존 설정을 유지합니다. [Windows·Mac·DGX 설정 화면 안내](docs/FIRST_START_KO.md#lan)에 따라 저장하고 확인합니다. 이미 연결되는 PC는 기존 설정을 사용합니다.
+프로젝트 폴더에서 연결을 검사합니다.
 
 ```bash
 docker compose run --rm x2 network-check
 ```
 
-`접속 가능: 10.0.1.41:22`가 나오면 다음으로 진행합니다.
-
-### 5. 로봇을 등록하고 로그인을 확인합니다
+`접속 가능: 10.0.1.41:22`가 나오면 로봇의 신원을 확인해 등록합니다.
 
 ```bash
 docker compose run --rm x2 trust-host
 ```
 
-표시되는 호스트 키 지문을 장비 담당자가 제공한 지문과 대조하고 `yes`를 입력합니다. 같은 PC·같은 로봇에서는 처음 한 번 등록합니다. 이어서 로그인과 SDK를 확인합니다.
+표시된 지문을 장비 담당자가 제공한 지문과 대조한 뒤 `yes`를 입력합니다. 등록 완료 문구가 나오면 로그인과 SDK를 확인합니다.
 
 ```bash
 docker compose run --rm x2 doctor
 ```
 
-`Robot SDK:` 뒤에 버전 정보가 나오면 로그인·SDK 조회에 성공한 것입니다. 대시보드가 자동으로 연결될 때까지 기다린 뒤 **연결됨·현재 모드·배터리·영상·점군 수신**을 확인합니다. 출력 해석은 [로봇 등록과 진단](docs/FIRST_START_KO.md#trust)을 참고합니다.
+`Robot SDK:` 뒤에 버전이 나오면 로그인·SDK 조회에 성공한 것입니다. 대시보드가 자동으로 접속할 때까지 기다린 뒤 **연결됨 표시, 현재 모드, 배터리, 카메라 영상**이 갱신되는지 확인합니다. [등록·진단 출력 설명](docs/FIRST_START_KO.md#trust)과 [센서 확인](docs/USER_GUIDE_KO.md#lidar)을 참고하세요.
 
-### 6. 화면에서 제어를 준비합니다
+실패하면 [연결 점검 순서](#troubleshooting)로 진행합니다.
 
-[대시보드 사용설명서](docs/USER_GUIDE_KO.md#control-ready)에 따라 **착석 자세 고정 → 일어서기 → 제어 활성화**를 진행합니다. 연결이 끊겼다가 복구되면 현재 자세를 확인하고 제어를 다시 활성화합니다.
+<a id="daily"></a>
+## 3. 다음부터 시작하기
 
-## 이후 사용할 때
-
-1. Docker를 실행합니다.
-2. 로봇을 부팅하고 같은 PC·유선 어댑터에 LAN을 연결합니다.
-3. `agibot-x2` 폴더에서 실행합니다.
+1. Docker Desktop 또는 Docker 서비스를 실행합니다.
+2. 로봇 지지 상태를 준비하고 전원을 켭니다.
+3. 같은 PC·유선 어댑터에 로봇 LAN을 연결합니다.
+4. 프로젝트 폴더에서 실행합니다.
 
 ```bash
 docker compose up -d
 ```
 
-4. [대시보드](http://127.0.0.1:8766)를 열고 제어 준비를 진행합니다.
+5. [대시보드](http://127.0.0.1:8766)를 열고 최신 상태 수신을 확인합니다.
+6. 아래 제어 준비를 진행합니다.
 
-매일의 시작·조종·종료는 [현장 사용 순서](docs/OPERATIONS.md)를 따릅니다. 화면만 확인할 때도 같은 명령을 사용합니다. 로봇이 준비되면 백그라운드에서 자동으로 접속합니다.
+접속 정보·유선 설정·등록 키가 유지되면 전원과 LAN 연결 후 자동으로 접속합니다. 새 PC에서는 [최초 설정](#first-setup)을 진행하고, 새 어댑터에서는 유선 주소를 확인합니다.
 
-## 설정 변경·문제 해결·종료
+<a id="control-ready"></a>
+## 4. 대시보드에서 제어 준비하기
 
-| 할 일 | 명령 또는 안내 |
-|---|---|
-| 대시보드 실행 상태 확인 | `docker compose ps` |
-| 최근 로그 확인 | `docker compose logs --tail 100 x2` |
-| 유선 연결 확인 | `docker compose run --rm x2 network-check` |
-| 로봇 로그인·SDK·센서 확인 | `docker compose run --rm x2 doctor` |
-| `.env` 저장 후 적용 | 조종을 마친 뒤 `docker compose up -d --force-recreate` |
-| 대시보드 종료 | 로봇을 앉히고 힘을 해제한 뒤 `docker compose down` |
-| 연결 문제 해결 | [단계별 검사와 오류별 조치](docs/FIRST_START_KO.md#connection-check) |
+상단의 **로봇 제어 준비**를 순서대로 진행합니다. 자세와 지지 조건은 [버튼별 안내](docs/USER_GUIDE_KO.md#control-ready)를 따릅니다.
 
-업데이트는 [로봇 종료 준비](docs/USER_GUIDE_KO.md#power-off)를 마친 뒤 진행합니다.
+| 순서 | 화면에서 할 일 | 완료 확인 |
+|---|---|---|
+| 1 | 의자에 앉은 자세를 지지하고 `착석 자세 고정` 실행 | 실제 자세 유지·`착석 고정` 표시 |
+| 2 | 의자·양발·보조자·기립 공간을 확인하고 `일어서기` 실행 | 실제 기립 완료·`안정 서기` 표시 |
+| 3 | 현장 확인 항목을 체크하고 `제어 활성화` 클릭 | 버튼이 `제어 해제`로 변경 |
+
+준비를 마치면 [프리셋](docs/USER_GUIDE_KO.md#presets), [이동·회전](docs/USER_GUIDE_KO.md#movement), [VLM 명령](docs/USER_GUIDE_KO.md#vlm)을 사용합니다. 움직임을 멈출 때는 `■ 이동 정지`를 누릅니다. 연결이 끊겼다가 복구되면 실제 자세와 모드를 확인하고 제어를 다시 활성화합니다.
+
+<a id="shutdown"></a>
+## 5. 사용을 마치고 종료하기
+
+1. 동작을 마치고 `■ 이동 정지` → `제어 해제`를 누릅니다.
+2. 의자 위치와 보조자 지지를 준비하고, 안정 서기에서 `의자에 앉기`를 실행합니다.
+3. 완전히 앉은 뒤 지지를 유지하며 `댐핑` → `영토크 · 힘 해제`로 전환합니다.
+4. 프로젝트 폴더에서 대시보드를 종료합니다.
+
+```bash
+docker compose down
+```
+
+5. 배터리 버튼을 짧게 한 번 누른 뒤 약 5초 길게 누르고 전원 꺼짐을 확인합니다.
+
+[앉히기·힘 해제·전원 끄기](docs/USER_GUIDE_KO.md#power-off)의 상세 절차를 따릅니다. 촬영 기록과 등록 키는 Docker 저장 공간에 유지됩니다. 충전은 [충전 안내](docs/USER_GUIDE_KO.md#charging)를 따릅니다.
+
+<a id="troubleshooting"></a>
+## 6. 연결이 안 될 때
+
+위에서부터 확인합니다. 모든 명령은 프로젝트 폴더에서 실행합니다.
+
+| 확인 | 정상 결과 | 안 되면 |
+|---|---|---|
+| `docker version` | Client·Server 버전 | Docker Desktop 또는 서비스를 실행합니다. |
+| `docker compose ps` | `x2`가 `Up`, 잠시 후 `healthy` | `docker compose up -d` 후 로그를 봅니다. |
+| `http://127.0.0.1:8766` | 대시보드 화면 | 같은 PC에서 주소와 포트를 확인합니다. |
+| `docker compose run --rm x2 network-check` | `접속 가능` | 로봇 부팅·랜선·PC 유선 IP·로봇 주소를 확인합니다. |
+| `docker compose run --rm x2 doctor` | `Robot SDK:` 버전 | 로봇 키 등록과 `.env`의 계정·비밀번호를 확인합니다. |
+
+오류 문구별 조치는 [연결 문제 해결](docs/FIRST_START_KO.md#errors)에 있습니다. `healthy`는 웹 서버가 응답한다는 뜻이며, 로봇 연결은 화면의 연결 표시와 최신 영상·상태로 확인합니다.
+
+<a id="maintenance"></a>
+## 7. 설정 변경·업데이트
+
+`.env`를 수정했다면 로봇 조작과 VLM 요청을 마친 뒤 적용합니다.
+
+```bash
+docker compose up -d --force-recreate
+```
+
+업데이트는 로봇을 의자에 지지하고 종료 준비를 마친 뒤 진행합니다.
 
 ```bash
 docker compose down
@@ -139,40 +210,16 @@ git pull --ff-only
 docker compose up -d --build
 ```
 
-`.env`, 등록된 로봇 키와 촬영 기록은 유지됩니다. 촬영 사진·VLM 기록의 PC 복사는 [기록 가져오기](docs/USER_GUIDE_KO.md#records)를 따릅니다.
+기존 `.env`, 등록 키와 촬영 기록은 유지됩니다. 기록을 PC로 가져오는 방법은 [요청 기록 확인](docs/USER_GUIDE_KO.md#records)을 참고하세요.
 
-## 사용설명서
+## 8. 자세한 사용설명서
 
-- [처음 설치하고 로봇 연결하기](docs/FIRST_START_KO.md)
-- [대시보드로 A to Z](docs/USER_GUIDE_KO.md) — 화면 버튼으로 준비·조종·종료·충전
-- [리모컨으로 A to Z](docs/REMOTE_CONTROL_GUIDE_KO.md) — 리모컨 연결·버튼 조합·종료
-- [현장 사용 순서](docs/OPERATIONS.md) — 매일 시작하고 끝내는 순서
-- [카메라·센서 안내](docs/SENSORS.md)
-- [개인 키로 SSH 접속하기](docs/USER_GUIDE_KO.md#ssh-key)
+| 문서 | 내용 |
+|---|---|
+| [최초 설치 안내](docs/FIRST_START_KO.md) | 프로그램 설치·파일 저장·운영체제별 유선 설정·SSH 등록·오류 해결 |
+| [대시보드 사용설명서](docs/USER_GUIDE_KO.md) | 화면 버튼으로 준비·조종·센서·VLM·종료·충전 |
+| [리모컨 사용설명서](docs/REMOTE_CONTROL_GUIDE_KO.md) | 리모컨 연결·버튼 조합·정지·종료 |
+| [현장 사용 순서](docs/OPERATIONS.md) | 설치를 마친 뒤 매일 확인할 시작·종료 순서 |
+| [카메라·센서 안내](docs/SENSORS.md) | 영상 선택·장치 상태·라이다 확인 |
 
-## 주요 기능
-
-- **로봇 제어 준비:** 착석 자세 고정, 의자에서 일어서기, 의자에 앉기, 댐핑·영토크 전환.
-- **직접 조종:** 설치 SDK에서 매핑된 프리셋, 이동·회전 버튼과 WASD·Q/E, 이동 정지·제어 해제.
-- **로봇 상태:** 상단 배터리 잔량, 관절 각도 슬라이더, 현재 운용 모드.
-- **센서:** 카메라·센서 자동 조회, 위치·현재 값·수신 상태, RGB·깊이 영상 선택, RGB 미리보기 30fps 설정, LiDAR 자동 연결·점군 XY 화면·수신 상태. 실제 수신 속도는 장비와 연결 상태에 따라 달라집니다.
-- **VLM:** OpenRouter 이미지 지원 모델 검색·선택, 사진과 텍스트 지시, 점군 요약 첨부, 요청별 사진·응답·실행 기록 저장.
-
-카메라와 센서별 데이터는 [카메라·센서 안내](docs/SENSORS.md)를 참고합니다.
-
-## 프로젝트 구성
-
-```text
-agibot-x2/
-├── Dockerfile / compose.yaml / compose.ssh-key.yaml
-├── docker/                 # 실행 준비, 접속 키 등록, 연결 진단
-├── .env.example
-├── x2_motion/              # 대시보드 서버, 로봇 워커, VLM, 센서, 웹 화면
-├── sdk_reference/          # 설치 SDK의 상수·서비스 참조
-├── docs/                   # 사용설명서와 개발 안내
-└── .github/workflows/      # Python 검사와 AMD64·ARM64 Docker 빌드
-```
-
-컨테이너에서 X2 개발 보드 `10.0.1.41`에 SSH로 접속합니다. 로봇에 설치된 ROS 2 Humble과 AIMDK를 사용하며, 대시보드 워커는 `/home/agi/agibot_dashboard`에 배치합니다. 웹 화면·RGB·점군은 같은 대시보드에서 제공합니다.
-
-개발용 `.sh` 실행과 테스트는 [개발 안내](docs/DEVELOPMENT.md), 기능별 SDK 연결은 [SDK 매핑](docs/SDK_MAPPING.md), 점검 결과는 [검증 기록](docs/VERIFICATION.md)에 정리했습니다.
+개발·Python 직접 실행은 [개발 안내](docs/DEVELOPMENT.md), 기능별 연결은 [SDK 매핑](docs/SDK_MAPPING.md)을 참고합니다. 조작 화면은 [Unitree G1 파이프라인](https://github.com/8l4nnk/unitree-g1-pipeline)과 구성을 맞췄으며, X2는 포트 `8766`을 사용합니다.

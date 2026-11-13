@@ -5,9 +5,7 @@ WORKDIR /app
 COPY x2_motion/requirements-dashboard.txt /app/x2_motion/requirements-dashboard.txt
 RUN pip install --no-cache-dir -r /app/x2_motion/requirements-dashboard.txt && useradd --system --uid 10001 --create-home x2 && mkdir -p /data && chown x2 /data
 COPY x2_motion /app/x2_motion
-COPY refresh_checksums.py FILE_SHA256SUMS.txt /app/
 COPY docker /app/docker
-RUN python /app/refresh_checksums.py
 EXPOSE 8766
 ENTRYPOINT ["python", "/app/docker/entrypoint.py"]
 CMD ["serve"]
