@@ -136,8 +136,8 @@ document.addEventListener('keyup',e=>{const key=e.key.length===1?e.key.toLowerCa
 window.addEventListener('blur',()=>{if(activeDirection)endHold(true,'manual_blur');});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&activeDirection)endHold(true,'manual_hidden');});
 window.addEventListener('beforeunload',()=>{instructionEpoch++;endHold(true);socket?.close();});
-$('view').onchange=()=>{$('camera').src='/camera/stream/'+$('view').value;$('view-label').textContent=$('view').selectedOptions[0].textContent.toUpperCase();};
-$('camera').onerror=()=>setTimeout(()=>{$('camera').src='/camera/stream/'+$('view').value+'?retry='+Date.now();},2500);
+
+$('camera').onerror=()=>setTimeout(()=>{$('camera').src='/camera/stream/head_color?retry='+Date.now();},2500);
 function setFrame(value) {frame=value;$('frame').src=value.url;$('frame').hidden=false;$('frame-empty').hidden=true;$('frame-info').textContent=`${value.source} · ${new Date(value.captured_at*1000).toLocaleTimeString('ko-KR')}${value.sensor_frame?' · #'+value.sensor_frame:''}`;}
 $('capture').onclick=async()=>{try{$('capture').disabled=true;setFrame(await api('/api/capture'));notify('이 RGB 프레임을 지시와 함께 보냅니다.');}catch(e){notify(e.message);}finally{$('capture').disabled=false;}};
 $('image').onchange=async()=>{if(!$('image').files[0])return;try{const form=new FormData();form.append('image',$('image').files[0]);setFrame(await api('/api/upload',form,true));}catch(e){notify(e.message);}finally{$('image').value='';}};
@@ -201,13 +201,11 @@ async function pollLidar(){
   try{const r=await fetch('/api/lidar/status'),v=await r.json();const ready=!!v.ready;
     $('lidar-status').textContent=ready?'점군 수신 중':v.connected?'점군 수신 대기':'로봇 연결 대기';
     $('lidar-status').className='badge '+(ready?'ok':'');
-    $('lidar-message').textContent=ready?`토픽 ${v.topic} · 좌표 ${v.frame_id||'미확인'} · ${v.source_hz}Hz · ${v.age_ms}ms`:v.error||'ROS 2 점군을 기다리는 중입니다.';
+    $('lidar-message').textContent=ready?`${v.sampled_points}개 점 · ${v.source_hz}Hz · ${v.age_ms}ms 전 수신`:v.error||'ROS 2 점군을 기다리는 중입니다.';
     $('include-lidar').disabled=!ready;if(!ready)$('include-lidar').checked=false;
-    $('lidar-connect').disabled=!v.connected;$('lidar-connect').textContent=v.connected?'토픽 연결':'로봇 연결 대기';
     if(ready){const fr=await fetch('/api/lidar/frame');drawLidar(fr.ok?await fr.json():null);}else drawLidar(null);
   }catch{drawLidar(null);}setTimeout(pollLidar,document.hidden?3000:200);
 }
-$('lidar-connect').onclick=async()=>{try{await api('/api/lidar/topic',{topic:$('lidar-topic').value});notify('LiDAR 토픽 구독을 요청했습니다.');}catch(e){notify(e.message);}};
 function renderJointControls(){
   if(!jointCatalog)return;
   const root=$('joint-controls');const previous={};root.querySelectorAll('[data-joint-number]').forEach(input=>{previous[input.dataset.jointNumber]={value:input.value,enabled:root.querySelector(`[data-joint-enabled="${input.dataset.jointNumber}"]`)?.checked};});root.replaceChildren();
@@ -248,7 +246,7 @@ async function loadConfig(){
     }else{
       $('camera').hidden=false;delete $('camera').parentElement.dataset.offline;
       $('camera').src='/camera/stream/head_color';
-      if(value.mode==='replay'){$('view-label').textContent='RECORDED · 실물 미연결';$('capture').textContent='저장 프레임 선택';}
+      if(value.mode==='replay'){$('view-label').textContent='RECORDED · 실물 미연결';$('capture').textContent='현재 프레임 사용';}
     }
     if(typeof configureModelPicker==='function')configureModelPicker(value.pipeline);else{$('model').value=value.pipeline.model;$('model').disabled=value.pipeline.provider!=='OpenRouter';}
     $('pipeline-status').textContent=value.pipeline.configured?`${value.pipeline.provider} 준비됨`:'키 설정 필요';

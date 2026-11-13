@@ -168,6 +168,7 @@ class Dashboard:
                 if data.get("type") == "state":
                     self.state = dict(data, connected=True)
                     self.state_at = time.monotonic()
+                    if hasattr(self,'sensor_state_updated'):self.sensor_state_updated()
                 else:
                     if hasattr(self,'lidar_event'):self.lidar_event(data)
                     self.events.append(dict(data, local_at=time.time()))
@@ -488,7 +489,7 @@ class Dashboard:
         reader = await request.multipart()
         field = await reader.next()
         if not field or field.name != "image":
-            raise ValueError("관점 이미지를 선택하세요.")
+            raise ValueError("사용할 프레임을 선택하세요.")
         content = bytearray()
         while True:
             chunk = await field.read_chunk()
@@ -523,8 +524,9 @@ class Dashboard:
             raise ValueError("이전 VLM 요청을 처리 중입니다.")
         data = await request.json()
         frame = self.frames.get(data.get("frame_id"))
+        camera_epoch=getattr(self,'camera_epoch',0)
         if not frame and data.get("frame_id"):
-            raise ValueError("관점 이미지를 새로 선택하거나 RGB 프레임을 다시 캡처하세요.")
+            raise ValueError("현재 프레임을 다시 사용하거나 프레임을 업로드하세요.")
         if not frame:
             frame=dict(jpeg=None,meta=dict(source="Text only",image_available=False,captured_at=time.time()),created=time.monotonic())
         lidar_frame = self.lidar.snapshot(self.sensor_connected()) if data.get('include_lidar') is True else None
@@ -543,13 +545,15 @@ class Dashboard:
             manifest.update(lidar_input_file='lidar_input.json',lidar_frame_file='lidar_frame.json')
             save_json(manifest_path,manifest)
         async with self.infer_lock:
-            await self.progress("inference", "텍스트와 선택한 관점 이미지를 VLM에 전달했습니다.",
+            await self.progress("inference", "텍스트와 선택한 프레임을 VLM에 전달했습니다.",
                                 model=data.get("model") or self.pipeline.model)
             try:
                 result = await self.pipeline.infer(self.session, data.get("instruction"), frame["jpeg"],
                     frame["meta"], dict(fsm=fsm, hand_status=self.state.get("hand_status"), sdk_version=sdk_version, battery_percent=self.state.get("battery_percent"), read_only=self.args.read_only,control_permissions=self.scopes,arm_actions=self.state.get("arm_actions", {}),custom_actions=self.state.get("custom_actions",{}),
                         operator_confirmed=getattr(self.args,"operator_ready",False) or self.owner is not None,
                         lidar=lidar,profile=profile), data.get("model"))
+                if camera_epoch!=getattr(self,'camera_epoch',0):
+                    raise ValueError('분석 중 카메라 또는 로봇 연결이 바뀌었습니다. 현재 프레임으로 다시 분석하세요.')
             except PlanValidationError as exc:
                 save_json(Path(recording['directory'])/'error.json',dict(error_type='plan_validation',error=str(exc)))
                 save_json(Path(recording['directory'])/'model_request.json',self.pipeline.last_request)

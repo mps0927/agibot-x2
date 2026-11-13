@@ -27,6 +27,7 @@ from vlm_recording import save_json
 from configuration import ROOT,DEFAULT_PORT,load_config,remote_paths,ssh_options
 from model_catalog import OpenRouterModels
 from lidar import CloudCache,DEFAULT_TOPIC,validate_topic,FRESH_MS
+from sensors import DEFAULT_CAMERA
 
 HERE = Path(__file__).parent.resolve()
 
@@ -58,6 +59,9 @@ class X2Dashboard(Dashboard):
         self.lidar=CloudCache()
         self.lidar_session=uuid.uuid4().hex
         self.lidar_subscriptions={}
+        self.camera_subscriptions={}
+        self.camera_topic=DEFAULT_CAMERA
+        self.camera_epoch=0
         self.scopes=permissions(getattr(args,'allow_control',False),getattr(args,'allow_presets',False),getattr(args,'allow_seat_hold',False),getattr(args,'allow_posture_actions',False))
         args.read_only=not any(self.scopes.values())
         self.camera_fps=30
@@ -102,6 +106,7 @@ class X2Dashboard(Dashboard):
         return RemoteProcess(connection,process)
 
     async def invalidate_connection(self):
+        self.camera_epoch+=1
         self.lidar.clear()
         self.lidar_session=uuid.uuid4().hex
         self.latest_jpeg=None
@@ -115,6 +120,7 @@ class X2Dashboard(Dashboard):
         await super().invalidate_connection()
 
     def accept_camera(self,data):
+        if data.get('topic') and data['topic']!=self.camera_topic:return
         try:
             jpeg=base64.b64decode(data['jpeg'],validate=True)
             if not jpeg.startswith(b'\xff\xd8') or len(jpeg)>6*1024*1024:return
@@ -124,9 +130,11 @@ class X2Dashboard(Dashboard):
         self.camera_hz=self.rate(self.camera_arrivals)
         self.latest_jpeg=jpeg
         self.camera_received=now
-        self.camera_meta=dict(source='X2 Head RGB',sensor_frame=data.get('sequence'),
+        self.camera_meta=dict(source=data.get('label') or 'X2 Head RGB',sensor_kind=data.get('kind','camera'),sensor_frame=data.get('sequence'),
                               camera_session='x2-live',topic=data.get('topic'),sensor_frame_name=data.get('frame_id'),
                               source_hz=data.get('source_hz'),preview_fps=data.get('preview_fps',self.camera_fps))
+        if data.get('kind')=='depth':
+            self.camera_meta.update(rendering='Depth visualization: brighter means closer, invalid samples are black, display range 0 to 6 meters.',depth_display_max_m=6)
         if not self.preview_task or self.preview_task.done():
             self.preview_task=asyncio.create_task(self.prepare_preview())
 
@@ -149,7 +157,9 @@ class X2Dashboard(Dashboard):
         # the result across viewers; slow viewers skip frames independently.
         while self.latest_jpeg and not self.closing:
             original=self.latest_jpeg
+            topic=self.camera_topic
             jpeg=await asyncio.to_thread(self.resize_preview,original)
+            if topic!=self.camera_topic or self.latest_jpeg is None:continue
             async with self.preview_condition:
                 self.preview_jpeg=jpeg;self.preview_sequence+=1
                 self.preview_arrivals.append(time.monotonic())
@@ -208,8 +218,44 @@ class X2Dashboard(Dashboard):
         age=int((time.monotonic()-self.camera_received)*1000) if self.camera_received else None
         return web.json_response(dict(cameras=dict(head_color=dict(hz=self.rate(self.preview_arrivals),transport_hz=self.camera_hz,
             source_hz=self.camera_meta.get('source_hz'),configured_fps=self.camera_fps,silent_ms=age,
-            error=None if self.latest_jpeg else '전면 RGB를 기다리는 중입니다.')),
-            topic=self.camera_meta.get('topic'),connected=self.state.get('connected',False)))
+            error=None if self.latest_jpeg else self.state.get('camera_error') or '선택한 카메라 영상을 기다리는 중입니다.')),
+            topic=self.camera_topic,label=self.camera_meta.get('source'),connected=self.sensor_connected()))
+
+    def sensor_state_updated(self):
+        selected=self.state.get('lidar',{}).get('topic')
+        if selected and selected!=self.lidar.topic:self.lidar.select(selected)
+        camera=self.state.get('camera_selected')
+        if camera and camera!=self.camera_topic:
+            self.camera_epoch+=1
+            self.camera_topic=camera;self.latest_jpeg=None;self.preview_jpeg=None;self.camera_received=0.
+            self.camera_arrivals.clear();self.preview_arrivals.clear();self.camera_meta={}
+            self.frames.clear();self.plans.clear()
+
+    async def sensor_status(self,request):
+        connected=self.sensor_connected();delay=(time.monotonic()-self.state_at)*1000 if self.state_at else 0
+        sensors=[]
+        for spec in self.state.get('sensors',[]):
+            age=spec.get('age_ms')
+            sensors.append(dict(spec,age_ms=int(age+delay) if age is not None else None,
+                receiving=bool(connected and age is not None and age+delay<2000)))
+        return web.json_response(dict(connected=connected,sensors=sensors,camera_selected=self.camera_topic))
+
+    async def select_camera(self,request):
+        data=await request.json();topic=data.get('topic')
+        if not self.sensor_connected():raise ValueError('로봇 연결 후 카메라를 선택하세요.')
+        match=next((spec for spec in self.state.get('sensors',[]) if spec['topic']==topic),None)
+        if not match or not match.get('preview') or match.get('publishers',0)<1:raise ValueError('수신 가능한 카메라를 선택하세요.')
+        ident=uuid.uuid4().hex;future=asyncio.get_running_loop().create_future();self.camera_subscriptions[ident]=future
+        try:
+            await self.send(dict(action='camera_select',topic=topic,request_id=ident))
+            result=await asyncio.wait_for(future,3)
+            if result.get('event')!='camera_selected':raise ValueError(result.get('error') or '카메라를 전환하지 못했습니다.')
+        finally:self.camera_subscriptions.pop(ident,None)
+        self.camera_epoch+=1
+        self.camera_topic=topic;self.latest_jpeg=None;self.preview_jpeg=None;self.camera_received=0.
+        self.camera_arrivals.clear();self.preview_arrivals.clear();self.camera_meta={}
+        self.frames.clear();self.plans.clear()
+        return web.json_response(dict(status='SUBSCRIBED',topic=topic,control_request_sent=False))
 
     async def capture(self,request):
         if not getattr(self.args,'replay',None) and (not self.state.get('connected') or not self.latest_jpeg or time.monotonic()-self.camera_received>2):
@@ -291,6 +337,10 @@ class X2Dashboard(Dashboard):
         self.lidar.accept(dict(data,session_id=self.lidar_session))
 
     def lidar_event(self,data):
+        if data.get('event') in ('camera_selected','camera_select_error'):
+            future=self.camera_subscriptions.get(data.get('request_id'))
+            if future and not future.done():future.set_result(data)
+            return
         if data.get('event') not in ('lidar_subscription','lidar_subscription_error'):return
         future=self.lidar_subscriptions.get(data.get('request_id'))
         if future and not future.done():future.set_result(data)
@@ -374,6 +424,8 @@ def create_app(args):
     application.router.add_get('/api/action-map',dashboard.action_map)
     application.router.add_get('/api/sdk-map',dashboard.sdk_map)
     application.router.add_get('/api/models',dashboard.models)
+    application.router.add_get('/api/sensors',dashboard.sensor_status)
+    application.router.add_post('/api/camera/select',dashboard.select_camera)
     application.router.add_post('/api/settings/model',dashboard.model_settings)
     application.router.add_post('/api/seat-hold',dashboard.seat_hold)
     application.router.add_get('/api/postures/{name}',dashboard.posture)

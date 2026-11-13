@@ -17,6 +17,10 @@ from control_policy import permissions, command_allowed, MC_REJECTIONS,seat_hold
 from posture_actions import POSTURES,validate_posture_request,prepare_posture_request
 from sdk_catalog import READ_QUERIES
 from lidar import CloudRelay,DEFAULT_TOPIC,validate_topic
+from sensors import SensorRegistry,DEFAULT_CAMERA,IMAGES,lidar_choice,camera_jpeg
+from sensors import describe,POINTCLOUD
+from sensor_bridge import SensorBridge
+from sensor_cdr import deserialize_sensor
 
 
 def finish_native_request(state,context,code,sdk_state,service,event):
@@ -79,6 +83,8 @@ def main():
     from aimdk_msgs.srv import GetMcAction, GetAllJointState, GetRobotResources
     from aimdk_msgs.msg import JointStateArray, HandStateArray, PmuState
     from sensor_msgs.msg import CompressedImage, Imu, PointCloud2
+    from rosidl_runtime_py.utilities import get_message
+    from rclpy.serialization import deserialize_message
     scopes=permissions(os.environ.get('X2_ALLOW_CONTROL')=='1',os.environ.get('X2_ALLOW_PRESETS')=='1',os.environ.get('X2_ALLOW_SEAT_HOLD')=='1',os.environ.get('X2_ALLOW_POSTURES')=='1')
     enabled=any(scopes.values())
     from aimdk_msgs.srv import SetMcPresetMotion
@@ -99,7 +105,9 @@ def main():
                  control_permissions=scopes,control_requests_sent=0, mode_changes_sent=0, velocity_publications=0)
     mode_at = 0.
     leg_at=0.
-    camera = dict(jpeg=None, at=0., sequence=0,source_hz=0.,fps=30)
+    camera = dict(message=None, at=0., sequence=0,source_hz=0.,fps=30,topic=DEFAULT_CAMERA,generation=0,error='')
+    sensors=SensorRegistry();sensor_subscriptions={};camera_subscription=None
+    native_counts={};unsupported_sensors=set();bridge_types={};bridge=None
     image_times=deque(maxlen=90)
     desired = [0.,0.,0.]
     hold_at = hold_start = 0.
@@ -170,10 +178,12 @@ def main():
     def pmu(message):
         state['battery_percent']=int(message.battery_remaining_capacity_percentage)
         state['battery_temperature']=float(message.battery_temperature)
-    def image(message):
+    def image(message,generation,transport='ros2'):
+        if generation!=camera['generation']:return
         now=time.monotonic();image_times.append(now)
         hz=(len(image_times)-1)/(image_times[-1]-image_times[0]) if len(image_times)>1 and image_times[-1]>image_times[0] else 0.
-        camera.update(jpeg=bytes(message.data),at=now,sequence=camera['sequence']+1,frame_id=message.header.frame_id,source_hz=round(hz,1))
+        sensors.offer(camera['topic'],message,transport)
+        camera.update(message=message,at=now,sequence=camera['sequence']+1,frame_id=message.header.frame_id,source_hz=round(hz,1))
     def imu(message):
         q=message.orientation
         yaw=math.atan2(2*(q.w*q.z+q.x*q.y),1-2*(q.y*q.y+q.z*q.z))
@@ -183,15 +193,32 @@ def main():
     node.create_subscription(HandStateArray,'/aima/hal/joint/hand/state',hands,qos_profile_sensor_data)
     node.create_subscription(PmuState,'/aima/hal/pmu/state',pmu,qos_profile_sensor_data)
     node.create_subscription(Imu,'/aima/hal/imu/torso/state',imu,qos_profile_sensor_data)
-    topic=os.environ.get('X2_CAMERA_TOPIC','/aima/hal/sensor/rgb_head_front_center/rgb_image/compressed')
-    node.create_subscription(CompressedImage,topic,image,qos_profile_sensor_data)
+    def select_camera(selected,request_id=None):
+        nonlocal camera_subscription
+        spec=sensors.entries.get(selected)
+        if selected!=DEFAULT_CAMERA and (not spec or not spec['preview'] or spec['publishers']<1):
+            raise ValueError('수신 가능한 카메라를 선택하세요.')
+        datatype=spec['datatype'] if spec else 'sensor_msgs/msg/CompressedImage'
+        if datatype not in IMAGES:raise ValueError('카메라 영상 형식이 올바르지 않습니다.')
+        generation=camera['generation']+1
+        subscription=node.create_subscription(get_message(datatype),selected,lambda m,g=generation:image(m,g),qos_profile_sensor_data)
+        previous=camera_subscription;camera_subscription=subscription
+        camera.update(message=None,at=0.,source_hz=0.,topic=selected,generation=generation,error='');image_times.clear()
+        if previous is not None:node.destroy_subscription(previous)
+        event('camera_selected',topic=selected,generation=generation,request_id=request_id,control_request_sent=False)
+    select_camera(DEFAULT_CAMERA)
     def send_camera():
         previous=0
         while not stop.is_set():
             began=time.monotonic();snapshot=camera.copy()
-            if snapshot['jpeg'] and snapshot['sequence']!=previous and began-snapshot['at']<2:
-                emit(dict(type='camera_frame',jpeg=base64.b64encode(snapshot['jpeg']).decode(),at=time.time(),sequence=snapshot['sequence'],frame_id=snapshot['frame_id'],topic=topic,source_hz=snapshot['source_hz'],preview_fps=snapshot['fps']))
-                previous=snapshot['sequence']
+            if snapshot['message'] is not None and snapshot['sequence']!=previous and began-snapshot['at']<2:
+                try:
+                    jpeg=camera_jpeg(snapshot['message'])
+                    if snapshot['generation']==camera['generation']:
+                        spec=sensors.entries.get(snapshot['topic'],{})
+                        emit(dict(type='camera_frame',jpeg=base64.b64encode(jpeg).decode(),at=time.time(),sequence=snapshot['sequence'],frame_id=snapshot['frame_id'],topic=snapshot['topic'],source_hz=snapshot['source_hz'],preview_fps=snapshot['fps'],label=spec.get('label','전면 RGB'),kind=spec.get('kind','camera')))
+                    previous=snapshot['sequence']
+                except Exception as exc:camera['error']=str(exc)
             stop.wait(max(.001,1/snapshot['fps']-(time.monotonic()-began)))
     threading.Thread(target=send_camera,daemon=True).start()
 
@@ -207,7 +234,10 @@ def main():
         if known and known!=['sensor_msgs/msg/PointCloud2']:
             raise ValueError('선택한 토픽의 메시지가 PointCloud2가 아닙니다.')
         generation=lidar.generation+1
-        subscription=node.create_subscription(PointCloud2,selected,lambda m,g=generation:lidar.offer(m,g),lidar_qos)
+        def receive_cloud(message,g=generation,t=selected):
+            if g==lidar.generation:sensors.offer(t,message)
+            lidar.offer(message,g)
+        subscription=node.create_subscription(PointCloud2,selected,receive_cloud,lidar_qos)
         lidar.select(selected)
         previous=lidar_subscription;lidar_subscription=subscription
         if previous is not None:node.destroy_subscription(previous)
@@ -228,12 +258,72 @@ def main():
             stop.wait(.2)
     lidar_thread=threading.Thread(target=send_lidar,daemon=True);lidar_thread.start()
     lidar_graph=dict(available_topics=[],publishers=0)
+    def sensor_topics():
+        topics=dict(node.get_topic_names_and_types())
+        if bridge:
+            for selected,types in bridge.topics():topics.setdefault(selected,types)
+        return list(topics.items())
+    def sensor_publishers(selected):
+        return max(node.count_publishers(selected),int(bool(bridge and bridge.available(selected))))
     def inspect_lidar():
         try:
-            lidar_graph.update(available_topics=[name for name,types in node.get_topic_names_and_types()
+            topics=sensor_topics()
+            chosen=lidar_choice(topics,sensor_publishers,lidar.topic,DEFAULT_TOPIC)
+            if chosen!=lidar.topic:select_lidar(chosen)
+            lidar_graph.update(available_topics=[name for name,types in topics
                 if 'sensor_msgs/msg/PointCloud2' in types and 'lidar' in name.lower()],
-                publishers=node.count_publishers(lidar.topic))
+                publishers=sensor_publishers(lidar.topic),native_publishers=node.count_publishers(lidar.topic),
+                transport='bridge' if bridge and bridge.available(lidar.topic) and node.count_publishers(lidar.topic)==0 else 'ros2')
         except Exception as exc:lidar_graph['graph_error']=str(exc)
+
+    def inspect_sensors():
+        nonlocal native_counts
+        topics=sensor_topics();native_counts={selected:node.count_publishers(selected) for selected,_ in topics}
+        sensors.discover(topics,sensor_publishers)
+        for selected,spec in sensors.entries.items():
+            if not spec['publishers'] or selected in sensor_subscriptions or spec['datatype'] in IMAGES or spec['kind'] in ('lidar','video_info','raw_info'):continue
+            try:
+                sensor_subscriptions[selected]=node.create_subscription(get_message(spec['datatype']),selected,
+                    lambda m,t=selected:sensors.offer(t,m),qos_profile_sensor_data)
+            except (AttributeError,ImportError):
+                sensors.errors[selected]='설치 SDK에 이 센서 데이터의 메시지 정의가 없습니다.'
+                unsupported_sensors.add(selected);sensor_subscriptions[selected]=None
+            except Exception as exc:sensors.errors[selected]=str(exc)
+        if sensor_publishers(camera['topic'])==0:
+            fallback=next((topic for topic,spec in sensors.entries.items()
+                if spec['preview'] and spec['publishers']>0 and spec['kind']=='camera' and topic.endswith('/compressed')),None)
+            if fallback and fallback!=camera['topic']:select_camera(fallback)
+
+    def bridge_wanted(item):
+        selected=item['topic'];datatype=item['schemaName'];spec=describe(selected,datatype)
+        if not spec or spec['kind'] in ('video_info','raw_info'):return False
+        if native_counts.get(selected,0)>0 and selected not in unsupported_sensors:return False
+        if datatype in IMAGES:return selected==camera['topic']
+        if datatype==POINTCLOUD:return selected==lidar.topic
+        return spec['kind']!='lidar'
+
+    def bridge_message(item,payload):
+        selected=item['topic'];datatype=item['schemaName']
+        if datatype not in bridge_types:
+            try:bridge_types[datatype]=get_message(datatype)
+            except (AttributeError,ImportError):bridge_types[datatype]=None
+        typ=bridge_types[datatype]
+        try:
+            if typ is not None:message=deserialize_message(payload,typ)
+            else:
+                # Large telemetry is summarized at most twice per second.
+                if time.monotonic()-sensors.sample_at.get(selected,-1)<.5:return
+                message=deserialize_sensor(payload,datatype,item.get('schema',''))
+            if datatype in IMAGES:
+                if selected==camera['topic']:image(message,camera['generation'],'bridge')
+            elif datatype==POINTCLOUD:
+                if selected==lidar.topic:
+                    sensors.offer(selected,message,'bridge');lidar.offer(message,lidar.generation)
+            else:sensors.offer(selected,message,'bridge')
+        except Exception as exc:sensors.errors[selected]='센서 값 해석 오류: '+str(exc)[:160]
+
+    bridge=SensorBridge(bridge_wanted,bridge_message)
+    inspect_sensors();bridge.start()
 
     # Creating mutation clients and a publisher is deferred until explicit
     # --allow-control startup. Registration is deferred again until operator arm.
@@ -307,6 +397,10 @@ def main():
         action=msg.get('action')
         if not command_allowed(action,scopes,msg.get('mode')):raise ValueError('대시보드 실행 권한 잠금: '+str(action))
         if action=='lidar_frame_request':lidar.request(ident);return
+        if action=='camera_select':
+            try:select_camera(msg.get('topic'),ident)
+            except Exception as exc:event('camera_select_error',request_id=ident,error=str(exc))
+            return
         if action=='lidar_topic':
             try:select_lidar(msg.get('topic'),ident);inspect_lidar()
             except Exception as exc:event('lidar_subscription_error',request_id=ident,error=str(exc))
@@ -425,6 +519,7 @@ def main():
                     if name in clients:query(name)
                 state['sdk_services']={name:client.service_is_ready() for name,client in clients.items()}
                 inspect_lidar()
+                inspect_sensors()
                 next_diagnostics=now+5
             while not incoming.empty():
                 try:handle(incoming.get_nowait())
@@ -441,13 +536,16 @@ def main():
             if any(desired) and now>=next_velocity:publish_velocity(desired);next_velocity=now+.02
             if now>=next_state:
                 state['lidar']=dict(lidar.status(),**lidar_graph)
+                state['sensors']=sensors.snapshot()
+                state['sensor_bridge']=dict(connected=bridge.connected,error=bridge.error)
+                state['camera_selected']=camera['topic'];state['camera_error']=camera['error']
                 state['camera_age_ms']=int((now-camera['at'])*1000) if camera['at'] else None
                 state['mode_age_ms']=int((now-mode_at)*1000) if mode_at else None
                 state['leg_age_ms']=int((now-leg_at)*1000) if leg_at else None
                 state['camera_source_hz']=camera['source_hz'];state['camera_preview_fps']=camera['fps']
                 emit(state);next_state=now+.25
     finally:
-        stop.set();lidar_thread.join(timeout=1)
+        stop.set();bridge.close();lidar_thread.join(timeout=1)
         if any(desired):publish_velocity([0.,0.,0.])
         event('worker_exit',control_requests_sent=state['control_requests_sent'],velocity_publications=state['velocity_publications'])
         node.destroy_node();rclpy.shutdown()

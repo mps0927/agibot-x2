@@ -68,6 +68,9 @@ GitHub Actions는 Ubuntu·macOS의 Python 3.10/3.12 조합과 Docker의 Linux AM
 | `docker/doctor.py` | 로봇 SSH·SDK·점군 토픽 조회 |
 | `x2_motion/dashboard_base.py` | 연결 재시도, 화면 API, 이미지·VLM 요청 |
 | `x2_motion/app.py` | X2 연결과 센서 상태·점군 API |
+| `x2_motion/sensor_bridge.py` | 로봇 내부의 기존 센서 브리지 읽기 전용 구독 |
+| `x2_motion/sensor_cdr.py` | SDK 미포함 상태 메시지의 제한된 CDR1 해석 |
+| `x2_motion/sensors.py` | 센서 분류·상태 요약·카메라 변환 |
 | `x2_motion/lidar.py` | PointCloud2 해석, 표본 추출, 최신 점군 관리 |
 | `x2_motion/x2_worker.py` | 로봇 SDK 호출, 카메라·라이다 구독 |
 | `x2_motion/vlm_recording.py` | 요청 사진·응답·피드백 저장 |

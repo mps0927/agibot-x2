@@ -82,7 +82,9 @@ class DirectRobotConnection(unittest.IsolatedAsyncioTestCase):
                         dashboard.connect_worker=connect_later
                         client=TestClient(TestServer(application));await client.start_server()
                         try:
-                            for _ in range(100):
+                            # Allow SSH/SFTP deployment of all worker modules on
+                            # slower hosts before checking the first sensor frame.
+                            for _ in range(400):
                                 if dashboard.state.get('connected') and dashboard.latest_jpeg and dashboard.lidar.ready(True):break
                                 await asyncio.sleep(.02)
                             self.assertTrue(dashboard.state.get('connected'));self.assertEqual(dashboard.latest_jpeg,jpeg)
@@ -136,6 +138,34 @@ class LocalBoundary(unittest.IsolatedAsyncioTestCase):
         with patch.object(self.d.session,'get',Mock(side_effect=AssertionError('Unexpected sidecar connection'))) as get:
             response=await self.client.post('/api/infer',json={'instruction':'관찰','include_lidar':True},headers={'Origin':self.origin})
             self.assertEqual(response.status,400);self.assertIn('LiDAR',(await response.json())['error']);get.assert_not_called()
+    async def test_camera_selection_is_read_only_and_tracks_worker_ack(self):
+        self.d.state['connected']=True;self.d.state_at=time.monotonic()
+        topic='/aima/hal/sensor/rgb_head_rear/rgb_image/compressed'
+        self.d.state['sensors']=[dict(topic=topic,preview=True,publishers=1)]
+        async def accept(msg):
+            self.sent.append(msg);self.d.lidar_event(dict(event='camera_selected',request_id=msg['request_id']))
+        self.d.send=accept
+        response=await self.client.post('/api/camera/select',json={'topic':topic},headers={'Origin':self.origin})
+        self.assertEqual(response.status,200);self.assertFalse((await response.json())['control_request_sent'])
+        self.assertEqual(self.d.camera_topic,topic);self.assertEqual(self.sent[0]['action'],'camera_select')
+        response=await self.client.post('/api/camera/select',json={'topic':'/unknown'},headers={'Origin':self.origin})
+        self.assertEqual(response.status,400);self.assertEqual(len(self.sent),1)
+    async def test_sensor_api_marks_old_or_disconnected_values_stale(self):
+        self.d.state.update(connected=True,sensors=[dict(topic='imu',age_ms=3000,receiving=True,value={'x':1})])
+        self.d.state_at=time.monotonic()
+        response=await self.client.get('/api/sensors');data=await response.json()
+        self.assertFalse(data['sensors'][0]['receiving'])
+        self.d.state['connected']=False;self.d.state['sensors'][0]['age_ms']=0
+        data=await (await self.client.get('/api/sensors')).json()
+        self.assertFalse(data['connected']);self.assertFalse(data['sensors'][0]['receiving'])
+    async def test_changing_camera_during_inference_discards_the_old_plan(self):
+        async def provider(*args,**kwargs):
+            self.d.camera_epoch+=1
+            return dict(scene='fixture',actions=[],plan_status='blocked')
+        self.d.pipeline.infer=provider
+        response=await self.client.post('/api/infer',json={'instruction':'관찰'},headers={'Origin':self.origin})
+        self.assertEqual(response.status,400);self.assertIn('카메라',(await response.json())['error'])
+        self.assertEqual(self.d.plans,{})
     async def test_lidar_topic_is_changed_only_after_worker_accepts(self):
         old=self.d.lidar.topic;target='/sensor/lidar/points'
         self.d.state.update(connected=True);self.d.state_at=time.monotonic()
