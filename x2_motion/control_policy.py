@@ -2,6 +2,28 @@
 import math
 SEAT_MODE = 'SIT_JOINT_DEFAULT'
 STABLE_MODES = ('STAND_DEFAULT', 'LOCOMOTION_DEFAULT')
+NATIVE_PRESET_SERVICES = {
+    'gesture': 'SetMcPresetMotion',
+    'custom_motion': 'ExecuteActionResource',
+}
+
+def validate_preset_dispatch(service,context,state,mode_age):
+    """Presets use native motion APIs, with no automatic mode-switch fallback.
+
+    This checks application requests and the latest reported MC mode. It is not
+    a measurement of balance or a guarantee about the physical motion.
+    """
+    action=(context or {}).get('action')
+    if service not in NATIVE_PRESET_SERVICES.values() and action not in NATIVE_PRESET_SERVICES:
+        return  # Explicit operator posture/shutdown requests use their own checks.
+    if NATIVE_PRESET_SERVICES.get(action)!=service:
+        raise ValueError('프리셋 요청은 제조사 모션 API만 사용할 수 있습니다. 자동 모드 전환은 허용하지 않습니다.')
+    if (type(mode_age) not in (int,float) or not math.isfinite(mode_age)
+            or not 0<=mode_age<=2 or state.get('fsm') not in STABLE_MODES
+            or state.get('fsm_status')!=100):
+        raise ValueError('프리셋 전송 전 최신 안정 서기·운동 제어 모드 응답을 확인하세요.')
+    if not state.get('armed'):
+        raise ValueError('프리셋 전송 전 제어를 활성화하세요.')
 
 def active_locomotion_allowed(mode,status,mode_age,armed,has_velocity,hold_age,elapsed):
     """Continue an existing velocity stream across the normal STAND -> WALK transition."""

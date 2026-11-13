@@ -14,7 +14,7 @@ import hashlib
 
 from capabilities import DEFAULT_PROFILE, DIRECTIONS, MODES, PRESETS, validate_profile, validate_velocity, velocity, prepare_preset_request
 from punch import NAME as PUNCH_NAME, resource_binding
-from control_policy import permissions, command_allowed, MC_REJECTIONS,seat_hold_check,SEAT_MODE,active_locomotion_allowed
+from control_policy import permissions, command_allowed, MC_REJECTIONS,seat_hold_check,SEAT_MODE,active_locomotion_allowed,validate_preset_dispatch
 from posture_actions import POSTURES,validate_posture_request,prepare_posture_request
 from sdk_catalog import READ_QUERIES
 from lidar import CloudRelay,DEFAULT_TOPIC,validate_topic
@@ -371,6 +371,7 @@ def main():
     def mutate(name,request,callback,context=None):
         nonlocal command_busy
         if not enabled:raise ValueError('읽기 전용입니다.')
+        validate_preset_dispatch(name,context,state,time.monotonic()-mode_at)
         if not clients[name].service_is_ready():raise ValueError(name+' 서비스가 준비되지 않았습니다.')
         timestamp(request);command_busy=True;state['control_requests_sent']+=1
         future=clients[name].call_async(request)
