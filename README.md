@@ -79,7 +79,7 @@ docker compose up -d
 | 게이트웨이·DNS | 비워 둡니다. |
 | 로봇 주소 | `10.0.1.41` |
 
-인터넷용 Wi-Fi는 기존 설정을 유지합니다. [Windows·Mac·DGX 설정 화면 안내](docs/FIRST_START_KO.md#lan)에 따라 저장하고 확인합니다. 이미 연결되는 PC는 기존 설정을 사용합니다.
+`10.0.1.2`는 PC의 유선 주소이고, `.env`의 `10.0.1.41`은 접속할 로봇의 주소입니다. 로봇용 유선 주소는 사용 후에도 유지합니다. 인터넷용 Wi-Fi는 기존 설정을 유지합니다. [Windows·Mac·DGX 설정 화면 안내](docs/FIRST_START_KO.md#lan)에 따라 저장하고 확인합니다. 이미 연결되는 PC는 기존 설정을 사용합니다.
 
 ```bash
 docker compose run --rm x2 network-check
