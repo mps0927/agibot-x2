@@ -2,6 +2,7 @@
 import math
 from joint_contract import catalog as joint_catalog
 from posture_actions import POSTURES
+from punch import NAME as PUNCH_NAME, resource_binding
 
 # The robot's RC log recorded pure yaw at 0.9756205446533405 rad/s.
 # Match the observed controller rate approximately, including VLM commands.
@@ -84,6 +85,7 @@ def prepare_preset_request(request,name,arm_actions):
 def catalog(arm_actions=None,profile=None,custom_actions=None):
     profile=profile or DEFAULT_PROFILE
     mapped=preset_mapping(arm_actions)
+    custom_actions={k:v for k,v in (custom_actions or {}).items() if k!=PUNCH_NAME or resource_binding(custom_actions)}
     return dict(schema='x2.commands.v1',robot='AGIBOT X2 Ultra',profile=profile,profile_limits=PROFILE_LIMITS,
                 moves={n:velocity(n,profile) for n in DIRECTIONS},gestures={n:GESTURES[n] for n in mapped},
                 manual_modes=MODES,custom_motions=custom_actions or {},joint_pose=joint_catalog(),

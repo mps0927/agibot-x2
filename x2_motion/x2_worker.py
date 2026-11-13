@@ -13,6 +13,7 @@ from pathlib import Path
 import hashlib
 
 from capabilities import DEFAULT_PROFILE, DIRECTIONS, MODES, PRESETS, validate_profile, validate_velocity, velocity, prepare_preset_request
+from punch import NAME as PUNCH_NAME, resource_binding
 from control_policy import permissions, command_allowed, MC_REJECTIONS,seat_hold_check,SEAT_MODE,active_locomotion_allowed
 from posture_actions import POSTURES,validate_posture_request,prepare_posture_request
 from sdk_catalog import READ_QUERIES
@@ -498,6 +499,7 @@ def main():
             mutate('SetMcPresetMotion',req,lambda response:native_response(response,msg),msg)
             state['gesture']=spec['name'];state['arm_pending']=True;state['native_result']=None;return
         if action=='custom_motion':
+            if msg.get('name')==PUNCH_NAME and not resource_binding(state['custom_actions']):raise ValueError('로봇에 등록된 punch_right 팔 모션이 필요합니다.')
             spec=state['custom_actions'].get(msg.get('name'))
             if not spec or msg.get('confirmed') is not True:raise ValueError('기기에서 조회한 저장 동작만 실행할 수 있습니다.')
             req=ExecuteActionResource.Request();req.resource_key=spec['resource_key'];req.resource_version=spec['version']

@@ -28,6 +28,7 @@ from configuration import ROOT,DEFAULT_PORT,load_config,remote_paths,ssh_options
 from model_catalog import OpenRouterModels
 from lidar import CloudCache,DEFAULT_TOPIC,validate_topic,FRESH_MS
 from sensors import DEFAULT_CAMERA
+from punch import NAME as PUNCH_NAME, describe as describe_punch, export_csv, resource_binding
 
 HERE = Path(__file__).parent.resolve()
 
@@ -199,7 +200,7 @@ class X2Dashboard(Dashboard):
         common=preset_block_reason(self.state.get('fsm'),self.scopes,self.state.get('connected',False),bool(self.state.get('gesture')))
         presets=[dict(p,display_name=p['label'],sdk_binding_present=True,
                       block_reason=common) for p in available.values()]
-        custom=list(self.state.get('custom_actions',{}).values())
+        custom=[v for k,v in self.state.get('custom_actions',{}).items() if k!=PUNCH_NAME or resource_binding(self.state.get('custom_actions'))]
         return web.json_response(dict(actions=[presets,custom],executor_actions={k:p['motion'] for k,p in available.items()},
             connected=bool(self.state.get('connected')),recorded=bool(self.state.get('recorded_state')),
             provenance='Installed SDK bindings only; live GetRobotResources for custom actions',
@@ -428,6 +429,14 @@ class X2Dashboard(Dashboard):
         self.pipeline.key=key.strip()
         return web.json_response(dict(configured=True,persisted=False))
 
+    async def punch(self,request):
+        result=describe_punch(self.state,self.sensor_connected())
+        if request.query.get('format')=='csv':
+            return web.Response(text=export_csv(result['profile']),content_type='text/csv',
+                headers={'Content-Disposition':'attachment; filename="x2_punch_right_reference.csv"'})
+        headers={'Content-Disposition':'attachment; filename="x2_punch_right_reference.json"'} if request.query.get('format')=='json' else {}
+        return web.json_response(result,headers=headers)
+
     async def models(self,request):
         if self.pipeline.endpoint:
             return web.json_response(dict(enabled=False,models=[],selected=self.pipeline.model,provider='HTTP pipeline'))
@@ -444,6 +453,7 @@ def create_app(args):
     application.router.add_get('/api/action-map',dashboard.action_map)
     application.router.add_get('/api/sdk-map',dashboard.sdk_map)
     application.router.add_get('/api/models',dashboard.models)
+    application.router.add_get('/api/punch',dashboard.punch)
     async def sensor_page(request):
         return web.FileResponse(Path(__file__).parent/'web'/'sensor.html')
     application.router.add_get('/sensor',sensor_page)

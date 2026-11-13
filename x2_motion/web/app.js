@@ -35,6 +35,7 @@ function startHold(direction) {
 }
 function stop() { instructionEpoch++;endHold();send({action:'stop'}); }
 function update() {
+  if(typeof updatePunchControls==='function')updatePunchControls();
   if(typeof updateModelPickerBusy==='function')updateModelPickerBusy();
   if(typeof updateRobotOverview==='function')updateRobotOverview(state);
   const connected=state.connected && socket?.readyState===WebSocket.OPEN;
