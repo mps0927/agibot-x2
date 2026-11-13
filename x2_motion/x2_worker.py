@@ -349,6 +349,7 @@ def main():
         msg=McLocomotionVelocity();msg.header.stamp=node.get_clock().now().to_msg();msg.source=source
         msg.forward_velocity,msg.lateral_velocity,msg.angular_velocity=vector
         publisher.publish(msg);state['velocity_publications']+=1
+        state['published_velocity']=list(vector)
     def release(disarm=False):
         nonlocal desired,must_release
         was_moving=any(desired) or state['moving']
@@ -487,6 +488,8 @@ def main():
                 hold_limit=msg.get('burst_seconds',state['profile']['burst_seconds'])
                 if type(hold_limit) not in (int,float) or not math.isfinite(hold_limit) or not .1<=hold_limit<=5:raise ValueError('이동 시간은 0.1~5초 범위여야 합니다.')
                 hold_start=time.monotonic()
+                event('velocity_command',direction=msg.get('direction','vector'),velocity=list(vector),
+                      topic='/aima/mc/locomotion/velocity',source=source,limit_seconds=hold_limit)
             desired=list(vector);hold_at=time.monotonic();state['moving']=any(vector);state['requested_velocity']=list(vector);return
         if action=='gesture':
             spec=available_presets.get(msg.get('name'))

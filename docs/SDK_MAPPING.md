@@ -14,6 +14,8 @@
 | 라이다 점군 | `/aima/hal/sensor/lidar_chest_front/lidar_pointcloud` (`sensor_msgs/msg/PointCloud2`) |
 | 배터리·IMU | `/aima/hal/pmu/state`, `/aima/hal/imu/torso/state` |
 
+좌회전은 `angular_velocity=+0.50`, 우회전은 `-0.50 rad/s`를 기본으로 전후·좌우 값은 0으로 발행한다. 연결 기기의 RC 로그에서 확인한 회전 입력은 `0.9756205446533405 rad/s`이며, 실내 테스트 기준은 그 절반 정도로 설정했다. `/aima/mc/common/state.speed_status.angular_bounds`에서 확인한 LOW 범위는 `-1.0~+1.0 rad/s`다. 대시보드와 VLM의 회전 상한은 `0.50 rad/s`, 전후·좌우 상한은 `0.30 m/s`다. 버튼을 누르는 동안 50Hz를 목표로 발행하고 버튼 해제·시간 상한·연결 끊김 시 0 속도로 정지한다.
+
 `/api/action-map`은 실제 연결 상태의 동작 매핑, `/api/sdk-map`은 전체 서비스 스키마 27개와 토픽 이름 35개 및 연결 범위를 반환한다. 서비스 12개는 실행/조회 처리기에 연결했고 음성·표정·지도·시스템 관리 등 나머지는 스키마와 미연결 이유를 표시한다.
 
 기준 설치 SDK의 프리셋은 17개 조합이 정확히 매핑된다. 공식 문서에만 있거나 제어 영역이 불확실한 항목은 UI/VLM 목록에서 제외한다. 연결한 로봇에 설치된 SDK에서 지원 목록을 다시 확인하고, 문서의 동작과 제어 영역이 일치하는 항목을 매핑한다.

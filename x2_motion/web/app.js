@@ -25,6 +25,8 @@ function endHold(disarm=false,reason='release') {
 }
 function startHold(direction) {
   if(!config.control_permissions?.movement || !state.armed || state.controller!=='you' || activeDirection) return;
+  const speed=(state.profile||{})[direction.startsWith('turn_')?'yaw_rps':['left','right'].includes(direction)?'lateral_mps':'forward_mps'];
+  if(speed===0){notify('이 방향의 속도가 0입니다. 이동 수치 조절에서 속도를 설정하세요.');return;}
   activeDirection=direction;
   document.querySelector(`[data-direction="${direction}"]`)?.classList.add('held');
   send({action:'hold',direction});
@@ -45,11 +47,11 @@ function update() {
   document.querySelectorAll('.dir').forEach(x=>x.disabled=!config.control_permissions?.movement||!ours||!!state.gesture||state.execution_source==='plan');
   $('execute-instruction').disabled=!connected || !state.ready || !canExecute() || state.controller==='other' || inFlight;
   $('infer').disabled=inFlight;
-  const profile=state.profile||{forward_mps:.2,lateral_mps:.1,yaw_rps:.1,burst_seconds:1};
+  const profile=state.profile||{forward_mps:.2,lateral_mps:.1,yaw_rps:.5,burst_seconds:1};
   $('limit-forward').textContent=profile.forward_mps.toFixed(2)+' m/s';$('limit-lateral').textContent=profile.lateral_mps.toFixed(2)+' m/s';$('limit-yaw').textContent=profile.yaw_rps.toFixed(2)+' rad/s';$('limit-burst').textContent=profile.burst_seconds?profile.burst_seconds.toFixed(1)+'초':'시간 상한 없음';
   if(!profileDirty)document.querySelectorAll('[data-setting]').forEach(x=>x.value=profile[x.dataset.setting]);
   $('apply-settings').disabled=!connected||state.controller==='other'||state.moving||!!state.gesture;
-  $('rotation-estimate').textContent=`현재 속도에서 1바퀴는 약 ${(2*Math.PI/profile.yaw_rps).toFixed(1)}초, 2바퀴는 약 ${(4*Math.PI/profile.yaw_rps).toFixed(1)}초가 필요합니다.`;
+  $('rotation-estimate').textContent=profile.yaw_rps>0?`현재 속도에서 1바퀴는 약 ${(2*Math.PI/profile.yaw_rps).toFixed(1)}초, 2바퀴는 약 ${(4*Math.PI/profile.yaw_rps).toFixed(1)}초가 필요합니다.`:'회전 속도가 0으로 설정되어 있습니다.';
   updateMode();
   document.querySelectorAll('[data-gesture]').forEach(x=>x.disabled=!config.control_permissions?.presets||!connected||!state.ready||!canExecute()||state.controller==='other'||inFlight||!!state.gesture||!state.arm_actions?.[x.dataset.gesture]);
   $('custom-play').disabled=!config.control_permissions?.presets||!connected||!state.ready||!canExecute()||state.controller==='other'||!!state.gesture||!state.custom_actions?.[$('custom-select').value];
@@ -68,6 +70,7 @@ function update() {
   $('joint-execute').disabled=true;
   $('joint-execute').title='X2 관절 목표는 미리보기만 제공합니다.';
   $('joint-receipt').textContent=jointPreview?JSON.stringify(jointPreview,null,2):'슬라이더 값을 미리보기하세요.';
+  if(ours && state.must_release && activeDirection){endHold();notify(`${profile.burst_seconds.toFixed(1)}초 시간 상한으로 정지했습니다. 버튼을 놓았다가 다시 누르세요.`);}
   if(!ours && activeDirection) endHold();
   const events=(state.events||[]).slice(-8).reverse();
   const observed=(state.events||[]).filter(e=>e.event==='motion_observation').at(-1);

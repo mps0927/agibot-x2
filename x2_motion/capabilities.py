@@ -3,8 +3,12 @@ import math
 from joint_contract import catalog as joint_catalog
 from posture_actions import POSTURES
 
-DEFAULT_PROFILE = dict(forward_mps=.20, lateral_mps=.10, yaw_rps=.10, burst_seconds=1.0)
-PROFILE_LIMITS = dict(forward_mps=(0,.30), lateral_mps=(0,.30), yaw_rps=(0,.30), burst_seconds=(.1,5.0))
+# The robot's RC log recorded pure yaw at 0.9756205446533405 rad/s.
+# Use roughly half that rate for indoor operation, including VLM commands.
+# MC LOW allows +/-1, but this application caps yaw at +/-0.5 rad/s.
+DEFAULT_PROFILE = dict(forward_mps=.20, lateral_mps=.10, yaw_rps=.50, burst_seconds=1.0)
+PROFILE_LIMITS = dict(forward_mps=(0,.30), lateral_mps=(0,.30), yaw_rps=(0,.50), burst_seconds=(.1,5.0))
+VELOCITY_LIMITS=(.30,.30,.50)
 DIRECTIONS = dict(forward=(1,0,0), backward=(-1,0,0), left=(0,1,0), right=(0,-1,0), turn_left=(0,0,1), turn_right=(0,0,-1))
 PRESETS = {}
 def _preset(key, label, motion, areas):
@@ -42,8 +46,8 @@ def velocity(direction,profile):
     return x*profile['forward_mps'],y*profile['lateral_mps'],yaw*profile['yaw_rps']
 
 def validate_velocity(value):
-    if not isinstance(value,(list,tuple)) or len(value)!=3 or any(type(x) not in (int,float) or not math.isfinite(x) or abs(x)>.30 for x in value):
-        raise ValueError('속도는 각 축 절댓값 0.30 이하의 유한 수 세 개여야 합니다.')
+    if not isinstance(value,(list,tuple)) or len(value)!=3 or any(type(x) not in (int,float) or not math.isfinite(x) or abs(x)>limit for x,limit in zip(value,VELOCITY_LIMITS)):
+        raise ValueError('전후·좌우 속도는 절댓값 0.30 m/s, 회전은 절댓값 0.50 rad/s 이하의 유한 수여야 합니다.')
     return tuple(float(x) for x in value)
 
 def resolve_move(action,profile):
@@ -90,7 +94,7 @@ def planner_catalog(arm_actions=None,profile=None,custom_actions=None,control_pe
     result=catalog(arm_actions,profile,custom_actions)
     mapped=preset_mapping(arm_actions)
     result.update(axes=dict(x='forward positive',y='left positive',yaw='counterclockwise positive'),
-                  move_parameters=dict(velocity='[vx m/s, vy m/s, yaw rad/s], absolute bound 0.30 per axis',seconds='0.1 to 5 seconds, required'),
+                  move_parameters=dict(velocity='[vx m/s, vy m/s, yaw rad/s], absolute bounds [0.30, 0.30, 0.50]',seconds='0.1 to 5 seconds, required'),
                   gestures={n:PRESETS[n]['label'] for n in mapped},
                   gesture_sdk_map={n:dict(service=p['service'],motion=p['motion'],area=p['area'],interrupt=False,
                       required_mode=p['required_mode'],binding_verified=True,physical_execution_verified=False) for n,p in mapped.items()},
