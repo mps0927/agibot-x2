@@ -20,25 +20,25 @@ class LocomotionStream(unittest.TestCase):
             namespace['publish_velocity'](vector)
         namespace['publish_velocity']([0.,0.,0.])
         self.assertEqual([(m.forward_velocity,m.lateral_velocity,m.angular_velocity) for m in messages],
-                         [(0.,0.,.50),(0.,0.,-.50),(0.,0.,0.)])
+                         [(0.,0.,.97),(0.,0.,-.97),(0.,0.,0.)])
         self.assertTrue(all(m.source=='rotation-fixture' and m.header.stamp is stamp for m in messages))
         self.assertEqual(namespace['state']['published_velocity'],[0.,0.,0.])
         self.assertEqual(namespace['state']['velocity_publications'],3)
 
     def test_rotation_limit_does_not_raise_translation_limits(self):
-        self.assertEqual(validate_velocity([.3,-.3,.5]),(.3,-.3,.5))
-        self.assertEqual(validate_velocity([0,0,-.5]),(0.,0.,-.5))
-        validate_profile(dict(DEFAULT_PROFILE,yaw_rps=.5))
-        for vector in ([.31,0,0],[0,-.31,0],[0,0,.51],[0,0,-.51],[0,0,.98],[0,0,math.nan],[0,0,True]):
+        self.assertEqual(validate_velocity([.3,-.3,.97]),(.3,-.3,.97))
+        self.assertEqual(validate_velocity([0,0,-.97]),(0.,0.,-.97))
+        validate_profile(dict(DEFAULT_PROFILE,yaw_rps=.97))
+        for vector in ([.31,0,0],[0,-.31,0],[0,0,.98],[0,0,-.98],[0,0,math.nan],[0,0,True]):
             with self.subTest(vector=vector),self.assertRaises(ValueError):validate_velocity(vector)
-        for rate in (.51,.98,math.inf):
+        for rate in (.98,1.0,math.inf):
             with self.assertRaises(ValueError):validate_profile(dict(DEFAULT_PROFILE,yaw_rps=rate))
 
     def test_vlm_rotation_uses_the_same_reference_and_limit(self):
         catalog=planner_catalog(profile=DEFAULT_PROFILE)
-        self.assertEqual(catalog['moves']['turn_left'],(0.,0.,.5))
-        self.assertEqual(catalog['moves']['turn_right'],(0.,0.,-.5))
-        for rate in (-.5,.5):
+        self.assertEqual(catalog['moves']['turn_left'],(0.,0.,.97))
+        self.assertEqual(catalog['moves']['turn_right'],(0.,0.,-.97))
+        for rate in (-.97,.97):
             self.assertEqual(resolve_move(dict(velocity=[0,0,rate],seconds=1.),DEFAULT_PROFILE)['velocity'],[0.,0.,rate])
         with self.assertRaises(ValueError):resolve_move(dict(velocity=[0,0,.98],seconds=1.),DEFAULT_PROFILE)
 
