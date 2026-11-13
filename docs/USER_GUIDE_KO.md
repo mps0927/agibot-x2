@@ -4,13 +4,13 @@
 
 Windows, Linux(DGX Spark 포함), macOS에서 Docker로 실행합니다. Windows에서는 PowerShell, Linux와 macOS에서는 터미널 앱에 명령을 입력합니다. 각 PC에서 설치·실행·로봇 연결까지 진행합니다.
 
-로봇 없이 화면부터 확인하려면 [5. 대시보드 설치와 실행](#dashboard)부터 진행합니다. 이후 로봇의 전원과 LAN을 연결하면 대시보드가 자동으로 접속합니다.
+처음 설치하는 경우 [처음 설치하고 로봇 연결하기](FIRST_START_KO.md)를 옆에 열어 두고 따라 합니다. 로봇 없이 화면부터 확인하려면 [5. 대시보드 설치와 실행](#dashboard)부터 진행합니다. 이후 로봇의 전원과 LAN을 연결하면 대시보드가 자동으로 접속합니다.
 
 대시보드의 버튼으로 착석 고정, 일어서기, 프리셋, 이동, 앉기와 관절 힘 해제까지 진행합니다. 아래 순서대로 화면의 버튼을 클릭합니다.
 
 리모컨으로 조작할 때는 [리모컨 사용설명서](REMOTE_CONTROL_GUIDE_KO.md)를 엽니다.
 
-이 설명서의 명령 상자는 한 줄씩 복사해 터미널에 붙여 넣고 Enter를 누릅니다. 명령 처리가 끝나면 다음 명령을 실행합니다. `docker compose up`은 서버 로그를 계속 표시하므로, 실행 중 다른 명령은 새 터미널을 같은 폴더에서 열어 입력합니다.
+이 설명서의 명령 상자는 한 줄씩 복사해 터미널에 붙여 넣고 Enter를 누릅니다. 명령 처리가 끝나면 다음 명령을 실행합니다. `docker compose up -d`가 완료되면 같은 창에서 다음 명령을 입력합니다.
 
 | 용어 | 뜻 |
 |---|---|
@@ -139,6 +139,8 @@ OmniHand가 장착된 로봇은 의자에 앉은 상태에서 기립을 준비�
 
 Wi-Fi 등 인터넷 연결은 유지하고, 주소 변경은 로봇에 연결한 유선 어댑터에 적용합니다. VLM을 사용할 때는 인터넷 연결도 필요합니다.
 
+단계별 클릭 위치는 [Windows·Mac·DGX의 유선 주소 설정](FIRST_START_KO.md#lan)에 정리했습니다.
+
 ### 4.3 대시보드에서 연결을 확인합니다
 
 처음 사용하는 PC에서는 아래 설치·실행과 접속 키 등록을 진행합니다. 이미 등록을 마쳤다면 대시보드를 켜 둔 채 로봇의 전원과 LAN을 연결하고 **AGIBOT X2 연결됨** 표시를 기다립니다.
@@ -148,9 +150,7 @@ Wi-Fi 등 인터넷 연결은 유지하고, 주소 변경은 로봇에 연결한
 
 ### 5.1 Git과 Docker를 준비합니다
 
-Git과 Docker Compose를 준비합니다. Windows와 Mac에서는 Docker Desktop을 실행하고, Linux·DGX Spark에서는 Docker Engine과 Compose 플러그인을 준비합니다. Docker 이미지 안에 Python과 필요한 패키지가 함께 설치됩니다.
-
-[Docker 설치 안내](https://docs.docker.com/get-started/get-docker/)에 따라 준비한 뒤 명령 창에서 확인합니다.
+Windows는 PowerShell, Mac·DGX Spark는 터미널을 사용합니다. [처음 설치하기](FIRST_START_KO.md#install)에 따라 Git과 Docker를 준비하고 다음을 확인합니다.
 
 ```bash
 git --version
@@ -158,62 +158,46 @@ docker version
 docker compose version
 ```
 
-`docker version`에 Client와 Server 정보가 모두 나오고 Compose 버전이 표시되면 다음으로 진행합니다.
+Docker의 `Client`와 `Server` 정보가 나오고 Compose가 **2.30 이상**이면 진행합니다. Windows·Mac에서는 Docker Desktop이 실행되어 있어야 합니다.
 
-### 5.2 저장소·설정을 준비하고 실행합니다
+### 5.2 저장소를 내려받고 대시보드를 실행합니다
 
-Windows에서는 PowerShell, Linux·macOS에서는 터미널에서 다음 명령을 실행합니다. 이미 내려받은 저장소가 있으면 해당 폴더에서 시작합니다.
+이미 `agibot-x2` 폴더가 있다면 그 폴더에서 명령 창을 엽니다. 처음 사용하는 경우 다음을 한 줄씩 실행합니다.
 
 ```bash
 git clone https://github.com/mps0927/agibot-x2.git
 cd agibot-x2
+docker compose up -d
 ```
 
-처음 설치하여 `.env`가 없을 때만 설정 예시를 복사합니다.
+첫 실행에는 필요한 파일을 내려받고 이미지를 만듭니다. 완료되면 같은 기기의 브라우저에서 **[대시보드 열기](http://127.0.0.1:8766)**를 누릅니다. `.env`와 로봇이 없어도 화면이 열립니다. 이미지를 업로드해 화면을 확인할 수 있습니다. VLM 분석에는 OpenRouter 키를 준비합니다.
 
-```bash
-cp .env.example .env
-```
+`-d`는 터미널을 닫아도 대시보드를 계속 실행하는 옵션입니다. 로봇 접속은 백그라운드에서 재시도하며, 접속 정보와 전원·LAN이 준비되면 연결됩니다.
 
-`.env`를 텍스트 편집기로 열어 사용할 기능의 접속 정보를 입력합니다. Windows에서는 `notepad .env`로 열 수 있습니다.
+### 5.3 로봇 로그인과 최초 연결을 준비합니다
 
-```dotenv
-X2_SSH_HOST=10.0.1.41
-X2_SSH_USER=agi
-X2_SSH_PASSWORD=로봇의_SSH_비밀번호
-OPENROUTER_API_KEY=발급받은_OpenRouter_키
-```
-
-화면만 확인할 때는 비밀번호와 API 키를 비워 둘 수 있습니다. 이미지로 VLM 분석을 할 때는 OpenRouter 키를, 로봇을 연결할 때는 SSH 접속 정보를 입력합니다. 기존 `.env`가 있으면 필요한 항목을 수정해 사용합니다.
-
-```bash
-docker compose up
-```
-
-첫 실행에는 이미지와 필요한 패키지를 준비하므로 시간이 걸립니다. 서버가 시작되면 같은 기기의 브라우저에서 **[대시보드 열기](http://127.0.0.1:8766)**를 누릅니다. 이 명령은 실행 로그를 계속 표시합니다. 터미널을 닫아도 유지하려면 `docker compose up -d`를 사용합니다.
-
-로봇이 없어도 대시보드가 열리며, 이미지를 업로드해 **계획만 보기**로 VLM을 테스트할 수 있습니다. 로봇 접속은 백그라운드에서 계속 시도합니다. 로봇이 연결되면 영상·상태 수신과 라이다 구독을 시작하고, 연결이 끊기면 자동으로 재연결합니다. 실제 조종은 화면에서 제어 준비를 마친 뒤 시작합니다.
-
-### 5.3 로봇을 처음 연결할 때
-
-1. [전원 켜기](#power-on)에 따라 부팅합니다.
-2. PC와 X2를 LAN으로 연결하고 [PC 유선 IP](#network-ip)를 설정합니다.
-3. `.env`의 SSH 접속 정보를 입력합니다. 실행 중 설정을 바꿨다면 다음 명령으로 적용합니다.
+1. `.env`가 없을 때만 `cp .env.example .env`로 설정 파일을 만듭니다.
+2. Windows는 `notepad .env`, Mac은 `open -e .env`, DGX는 `nano .env`로 엽니다.
+3. `X2_SSH_HOST=10.0.1.41`, `X2_SSH_USER=agi`를 확인합니다.
+4. `X2_SSH_PASSWORD=` 뒤에 장비 담당자가 알려 준 로봇의 `agi` 계정 비밀번호를 입력합니다. VLM을 사용하려면 `OPENROUTER_API_KEY=` 뒤에 OpenRouter 키도 입력합니다.
+5. 값을 따옴표 없이 입력하고 UTF-8로 저장합니다. [파일 수정과 저장 방법](FIRST_START_KO.md#env)을 참고합니다.
+6. 이미 실행 중인 대시보드에 설정을 반영합니다.
 
 ```bash
 docker compose up -d --force-recreate
 ```
 
-4. 별도 터미널을 같은 저장소 폴더에서 열고, 로봇의 접속 키를 등록합니다. 표시된 지문을 장비 담당자가 제공한 지문과 대조한 뒤 `yes`를 입력합니다.
+7. [로봇 부팅](#power-on)과 [LAN 주소 설정](#network-ip)을 마칩니다.
+8. 접속한 로봇의 지문을 확인해 키를 등록하고 연결을 진단합니다.
 
 ```bash
 docker compose run --rm x2 trust-host
 docker compose run --rm x2 doctor
 ```
 
-키는 Docker 데이터 볼륨에 저장됩니다. 같은 PC·같은 로봇을 다시 사용할 때는 등록을 반복할 필요가 없습니다. 개인 키 인증을 사용하는 경우 [개인 키 연결 방법](#ssh-key)을 따릅니다. PC에서 직접 SSH로 접속했던 경우에도 Docker에서 처음 연결할 때는 이 등록을 진행합니다.
+표시되는 문구와 입력 방법은 [처음 로봇 등록하기](FIRST_START_KO.md#trust)를 따릅니다. 같은 PC·같은 로봇에서는 처음 한 번 등록합니다. 개인 키 인증은 아래 [개인 키 연결](#ssh-key)을 사용합니다.
 
-5. 화면 상단의 **AGIBOT X2 연결됨**, RGB 영상과 현재 모드를 확인합니다. **이동 정지** 옆에서 배터리를, **관절 상태**에서 관절 각도를 확인합니다. 이어서 **착석 자세 고정 → 일어서기 → 제어 활성화** 순서로 진행합니다. 다음 사용부터는 `docker compose up`으로 실행하고 전원·LAN을 연결하면 자동으로 접속합니다.
+대시보드에서 **AGIBOT X2 연결됨**, RGB 영상, 현재 모드와 상단 배터리 잔량을 확인합니다. **관절 상태**를 누르면 각 관절의 현재 각도를 슬라이더로 볼 수 있습니다. 연결을 확인한 뒤 아래 로봇 제어 준비로 진행합니다.
 
 ### 5.4 상태 확인·종료·업데이트
 
@@ -228,7 +212,7 @@ docker compose run --rm x2 doctor
 | `.env` 변경 적용 | `docker compose up -d --force-recreate` |
 | 대시보드 종료 | `docker compose down` |
 
-로봇을 사용했다면 [의자에 앉히고 힘 해제하기](#power-off)를 마친 뒤 대시보드를 종료합니다. `docker compose up`으로 실행한 터미널에서는 `Ctrl+C`로도 대시보드를 중지할 수 있습니다.
+로봇을 사용했다면 [의자에 앉히고 힘 해제하기](#power-off)를 마친 뒤 대시보드를 종료합니다.
 
 소스를 업데이트할 때는 조작을 마치고 실행합니다.
 
@@ -242,7 +226,7 @@ docker compose up -d --build
 
 ### 5.5 Windows 환경이 아닌 경우
 
-Linux(DGX Spark 포함)와 macOS에서도 같은 명령을 사용합니다. 해당 기기에서 저장소와 `.env`를 준비하고 `docker compose up`을 실행합니다. 로봇은 해당 기기의 LAN에 직접 연결하고, 브라우저도 해당 기기에서 엽니다.
+Linux(DGX Spark 포함)와 macOS에서도 같은 명령을 사용합니다. 해당 기기에서 저장소를 내려받고 `docker compose up -d`를 실행합니다. 로봇을 사용할 때 `.env`에 접속 정보를 입력합니다. 로봇은 해당 기기의 LAN에 직접 연결하고, 브라우저도 해당 기기에서 엽니다.
 
 <a id="ssh-key"></a>
 ### 5.6 개인 키로 접속하는 경우
@@ -624,7 +608,7 @@ docker compose ps
 | `git: command not found` | Git을 설치하고 터미널을 다시 엽니다. |
 | `Repository not found` | 저장소 접근 권한이 있는 GitHub 계정으로 로그인합니다. |
 | `no configuration file provided` | `compose.yaml`이 있는 `agibot-x2` 폴더에서 명령을 실행합니다. |
-| `.env`를 찾을 수 없음 | `.env.example`을 `.env`로 복사하고 설정을 입력합니다. 파일 이름이 `.env.txt`가 되지 않았는지 확인합니다. |
+| Compose `format` 또는 `env_file` 오류 | `docker compose version`을 확인하고 2.30 이상으로 업데이트합니다. |
 | `.env` 설정이 적용되지 않음 | 저장 후 `docker compose up -d --force-recreate`를 실행합니다. |
 | 전원이 켜지지 않음 | 배터리 장착 → 잔량 → 짧게 1회 누른 뒤 약 5초 길게 누르는 순서를 확인합니다. |
 | `X2 연결 대기: TimeoutError` | 로봇 없이 화면을 확인 중이면 그대로 사용합니다. 로봇을 사용할 때는 전원 → LAN 링크 → PC 유선 IP → 주소를 확인합니다. |

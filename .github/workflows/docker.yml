@@ -32,6 +32,13 @@ jobs:
             -e X2_ENV_FILE=/run/x2/config.env \
             -e X2_SSH_KNOWN_HOSTS=/data/ssh/known_hosts \
             agibot-x2:runtime-test /app/docker/test_runtime.py
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.12'
+      - name: Check Compose startup without robot settings
+        run: |
+          python -m pip install -r x2_motion/requirements-dashboard.txt
+          python docker/test_compose.py
       - uses: docker/login-action@v3
         if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         with:

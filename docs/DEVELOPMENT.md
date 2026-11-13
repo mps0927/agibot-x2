@@ -58,7 +58,7 @@ Docker 이미지에 변경 사항을 반영합니다.
 docker compose up -d --build
 ```
 
-GitHub Actions는 Ubuntu·macOS의 Python 3.10/3.12 조합과 Docker의 Linux AMD64·ARM64 빌드를 검사합니다. Docker 런타임 테스트는 외부 네트워크가 없는 컨테이너에서 모의 SSH 서버로 권한 전환과 인증을 확인합니다.
+GitHub Actions는 Ubuntu·macOS의 Python 3.10/3.12 조합과 Docker의 Linux AMD64·ARM64 빌드를 검사합니다. Docker 런타임 테스트는 외부 네트워크가 없는 컨테이너에서 모의 SSH 서버로 권한 전환과 인증을 확인합니다. `docker/test_compose.py`는 새 체크아웃 복사본에서 `.env` 없는 시작, 설정 반영, 비밀번호 특수문자, 이미지 유지와 볼륨 보존을 확인합니다. 테스트 이미지를 준비한 뒤 `python docker/test_compose.py`로 실행하며 기본 이미지 이름은 `agibot-x2:runtime-test`입니다.
 
 ## 센서·기록 관련 파일
 

@@ -13,11 +13,16 @@ def prepare():
     uid=gid=10001
     runtime=Path('/run/x2');runtime.mkdir(mode=0o700,exist_ok=True)
     for source,target in (('/run/secrets/x2_config','config.env'),('/run/secrets/robot_key','robot_key')):
-        if not Path(source).exists():
-            if target=='config.env':raise RuntimeError('설정 파일 .env를 준비하세요.')
-            continue
         dest=runtime/target
-        shutil.copyfile(source,dest);os.chmod(dest,0o600);os.chown(dest,uid,gid)
+        if Path(source).is_file():
+            shutil.copyfile(source,dest)
+        elif target=='config.env':
+            # Compose supplies an optional .env as runtime environment values.
+            # An empty file also allows a brand-new checkout to open its UI.
+            dest.write_text('',encoding='utf-8')
+        else:
+            continue
+        os.chmod(dest,0o600);os.chown(dest,uid,gid)
     os.chown(runtime,uid,gid)
     data=Path('/data');data.mkdir(exist_ok=True)
     for path in (data,data/'ssh',data/'artifacts'):
